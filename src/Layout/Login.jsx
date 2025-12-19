@@ -1,4 +1,4 @@
-import { FaGoogle } from "react-icons/fa6";
+import { FaGoogle, FaEye, FaEyeSlash } from "react-icons/fa6";
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { post } from "../utils/api";
@@ -7,12 +7,15 @@ import { useToast } from "../components/ToastProvider";
 export default function Login() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false); // State for password visibility
   const toast = useToast();
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     const form = e.target;
     const identifier = form.querySelector('input[name="email"]').value;
     const password = form.querySelector('input[name="password"]').value;
+
     try {
       setLoading(true);
       const data = await post("/api/user/login", {
@@ -24,7 +27,7 @@ export default function Login() {
         localStorage.setItem("authToken", token);
       }
 
-      // Store user info (so UI can know if this is a sub-user)
+      // Store user info
       try {
         if (data.user) {
           localStorage.setItem("authUser", JSON.stringify(data.user));
@@ -36,10 +39,11 @@ export default function Login() {
         }
       } catch (e) {}
 
-      // Mark user as logged in so promotion shows once on homepage
+      // Session flags
       sessionStorage.setItem("userLoggedIn", "true");
       sessionStorage.setItem("justLoggedIn", "true");
-      sessionStorage.removeItem("promoShownThisSession"); // Reset promo flag for fresh login
+      sessionStorage.removeItem("promoShownThisSession");
+
       toast.addToast("Login successful", { type: "success" });
       navigate("/home-page");
     } catch (err) {
@@ -49,6 +53,7 @@ export default function Login() {
       setLoading(false);
     }
   };
+
   return (
     <div
       className="flex flex-col md:flex-row min-h-screen bg-white"
@@ -95,13 +100,22 @@ export default function Login() {
           <label className="block my-2 font-semibold text-[#374151]">
             Password
           </label>
-          <input
-            name="password"
-            type="password"
-            required
-            placeholder="Enter your password"
-            className="w-full sm:w-[90%] p-4 border-2 rounded-xl mb-4 border-[#e5e7eb] hover:border-[#169D53] outline-none transition-all duration-300"
-          />
+          <div className="relative w-full sm:w-[90%]">
+            <input
+              name="password"
+              type={showPassword ? "text" : "password"}
+              required
+              placeholder="Enter your password"
+              className="w-full p-4 pr-12 border-2 rounded-xl mb-4 border-[#e5e7eb] hover:border-[#169D53] outline-none transition-all duration-300"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute inset-y-0 right-0 flex items-center pr-4 text-gray-600 hover:text-gray-900 focus:outline-none"
+            >
+              {showPassword ? <FaEyeSlash size={20} /> : <FaEye size={20} />}
+            </button>
+          </div>
 
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between my-6 w-full sm:w-[90%] gap-2 sm:gap-0">
             <label className="flex items-center">
@@ -143,7 +157,7 @@ export default function Login() {
           <div className="p-3 w-full sm:w-[90%] text-center">
             <p className="text-[#6b7280] text-sm sm:text-base">
               Don't have an account?
-              <Link to="/signup" className="text-[#169D53] font-bold">
+              <Link to="/signup" className="text-[#169D53] font-bold ml-1">
                 Sign Up
               </Link>
             </p>

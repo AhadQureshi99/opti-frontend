@@ -130,6 +130,13 @@ export default function Pendingorder() {
           console.error("Failed to merge offline orders", e);
         }
 
+        // Sort orders: newest first (new orders appear on top)
+        allOrders.sort((a, b) => {
+          const dateA = new Date(a.createdAt || a.deliveryDate || 0);
+          const dateB = new Date(b.createdAt || b.deliveryDate || 0);
+          return dateB - dateA; // Descending: newest on top
+        });
+
         setOrders(allOrders);
         const u =
           profileData && profileData.user ? profileData.user : profileData;

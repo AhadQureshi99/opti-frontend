@@ -78,7 +78,7 @@ export default function Completeorder() {
           ? ordersData
           : ordersData || [];
 
-        // Merge with offline queue orders (completed orders from offline)
+        // Merge with offline queue orders (if any created offline and later synced)
         try {
           const queue = JSON.parse(
             localStorage.getItem("offline_api_queue") || "[]"
@@ -102,6 +102,13 @@ export default function Completeorder() {
         } catch (e) {
           console.error("Failed to merge offline orders", e);
         }
+
+        // Sort orders: newest first (most recently completed on top)
+        allOrders.sort((a, b) => {
+          const dateA = new Date(a.updatedAt || a.createdAt || a.deliveryDate || 0);
+          const dateB = new Date(b.updatedAt || b.createdAt || b.deliveryDate || 0);
+          return dateB - dateA; // Descending order
+        });
 
         setOrders(allOrders);
         const u =

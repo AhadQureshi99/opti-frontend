@@ -19,38 +19,26 @@ export default function Customerorder({ order = null }) {
 
     const fetchShopProfile = async () => {
       try {
-        // First: Try authenticated profile (with cache if available)
-        const data = await get("/api/user/profile", { cacheKey: "profile" });
+        const data = await get("/api/user/profile");
         if (!mounted) return;
-
-        const user = data && data.user ? data.user : data;
-        setShopDetails(user || {});
-      } catch (err) {
-        // Fallback: Try public profile
+        setShopDetails(data?.user || data || {});
+      } catch {
         try {
           const data = await get("/api/user/public-profile");
           if (!mounted) return;
-
-          const user = data && data.user ? data.user : data;
-          setShopDetails(user || {});
-        } catch (err2) {
-          console.error("Failed to fetch shop profile", err2);
+          setShopDetails(data?.user || data || {});
+        } catch {
           toast.addToast("Failed to load shop details", { type: "error" });
         }
       }
     };
 
     fetchShopProfile();
-
-    return () => {
-      mounted = false;
-    };
+    return () => (mounted = false);
   }, [toast]);
 
-  /* ===== PRINT ===== */
   const handlePrint = () => window.print();
 
-  /* ===== SAVE PDF ===== */
   const handleSave = async () => {
     const el = document.querySelector(".print-page");
     if (!el) return;
@@ -64,30 +52,14 @@ export default function Customerorder({ order = null }) {
     const imgData = canvas.toDataURL("image/png");
     const pdf = new jsPDF("p", "mm", "a4");
 
-    const pageWidth = pdf.internal.pageSize.getWidth();
-    const imgHeight = (canvas.height * pageWidth) / canvas.width;
+    const pdfWidth = pdf.internal.pageSize.getWidth();
+    const imgWidth = pdfWidth - 20;
+    const imgHeight = (canvas.height * imgWidth) / canvas.width;
 
-    pdf.addImage(imgData, "PNG", 0, 10, pageWidth, imgHeight);
+    pdf.addImage(imgData, "PNG", 10, 10, imgWidth, imgHeight);
     pdf.save(`order-${order?._id || "slip"}.pdf`);
   };
 
-  /* ===== SHARE ===== */
-  const handleShare = () => {
-    const phone = order?.whatsappNumber?.replace(/[^0-9]/g, "");
-    if (!phone) {
-      toast.addToast("No WhatsApp number available", { type: "error" });
-      return;
-    }
-
-    window.open(
-      `https://wa.me/${phone}?text=${encodeURIComponent(
-        `Order ${order?._id}\nPatient: ${order?.patientName}\nTotal: ${order?.totalAmount}`
-      )}`,
-      "_blank"
-    );
-  };
-
-  /* ===== MARK COMPLETE ===== */
   const handleMarkComplete = async () => {
     try {
       await put(`/api/orders/${order._id}/complete`);
@@ -98,89 +70,65 @@ export default function Customerorder({ order = null }) {
     }
   };
 
-  // Derive display values exactly like in Herosection
-  const displayAddress =
-    shopDetails.address ||
-    "Civic Center, Mountain View, CA, United States, California";
-
-  const displayWhatsApp =
-    shopDetails.whatsappNumber ||
-    shopDetails.phoneNumber ||
-    "N/A";
+  const formatAmount = (amount) =>
+    amount ? `Rs ${Number(amount).toLocaleString()}` : "N/A";
 
   return (
     <div className="min-h-screen bg-white pb-10">
-      {/* ===== HEADER (SCREEN ONLY) ===== */}
+      {/* HEADER */}
       <div className="print:hidden bg-gradient-to-b from-[#A8E6A3] to-[#E8FFF0] rounded-b-[40px] pb-6">
         <div className="relative flex items-center justify-center px-4 pt-6">
           <Link to="/new-order">
             <FaArrowLeft className="absolute left-4 text-xl" />
           </Link>
-          <img
-            src="/Optislipimage.png"
-            alt="logo"
-            className="h-[14vh]"
-            style={{ filter: "brightness(0)" }}
-          />
+          <img src="/Optislipimage.png" alt="logo" className="h-[14vh]" />
         </div>
       </div>
 
-      {/* ===== SLIP ===== */}
+      {/* SLIP */}
       <div className="flex justify-center mt-4">
         <div
           className="print-page border rounded-xl p-4 text-[13px]"
           style={{ width: "280px" }}
         >
-          {/* HEADER */}
           <div className="text-center mb-2">
             <h1 className="font-bold text-[18px] uppercase">
-              OPTISLIP
+              {shopDetails.shopName || "OPTISLIP"}
             </h1>
-            <p className="text-[11px] leading-tight">
-              {displayAddress}
-            </p>
-            <p className="text-[11px]">
-              Phone: {shopDetails.phoneNumber || "N/A"}
-            </p>
+            <p className="text-[11px]">{shopDetails.address}</p>
+            <p className="text-[11px]">Phone: {shopDetails.phoneNumber}</p>
             <p className="text-[11px] font-semibold">
-              WhatsApp: 0{displayWhatsApp}
+              WhatsApp: {shopDetails.whatsappNumber}
             </p>
           </div>
 
           <hr className="border-dashed mb-2" />
 
-          {/* BASIC INFO */}
           <Row label="Tracking ID" value={order?.trackingId || order?._id} />
           <Row label="Patient Name" value={order?.patientName} />
           <Row label="WhatsApp" value={order?.whatsappNumber} />
 
           <hr className="border-dashed my-2" />
 
-          {/* ORDER INFO */}
           <Row label="Frame" value={order?.frameDetails} />
           <Row label="Lens" value={order?.lensType} />
-          <Row label="Total" value={order?.totalAmount} />
-          <Row label="Advance" value={order?.advance} />
-          <Row
-            label="Delivery"
-            value={
-              order?.deliveryDate
-                ? new Date(order.deliveryDate).toLocaleDateString()
-                : "N/A"
-            }
-          />
-          <Row label="Balance" value={order?.balance} />
+          <Row label="Total" value={formatAmount(order?.totalAmount)} />
+          <Row label="Advance" value={formatAmount(order?.advance)} />
+          <Row label="Balance" value={formatAmount(order?.balance)} />
 
-          {/* EYES */}
           <div className="flex justify-between mt-2">
             <Eye title="Right Eye" eye={order?.rightEye} />
             <Eye title="Left Eye" eye={order?.leftEye} />
           </div>
 
-          {/* ADD + NOTE */}
+          {/* ADD and Special Note */}
           <div className="text-center mt-4">
             <p className="font-semibold">ADD</p>
-            <p className="font-bold">{order?.addInput || "+0.75"}</p>
+            <p className="font-bold">
+              {order?.addInput && order.addInput !== "Select"
+                ? order.addInput
+                : "-"}
+            </p>
 
             {order?.specialNote && (
               <>
@@ -192,32 +140,23 @@ export default function Customerorder({ order = null }) {
         </div>
       </div>
 
-      {/* ===== ACTION BUTTONS (SCREEN ONLY) ===== */}
+      {/* ACTIONS */}
       <div className="print:hidden flex justify-center gap-4 mt-5">
-        <button
-          onClick={handlePrint}
-          className="flex items-center gap-2 bg-gray-200 px-6 py-2 rounded"
-        >
+        <button onClick={handlePrint} className="bg-gray-200 px-6 py-2 rounded">
           <LuPrinter /> Print
         </button>
 
         <button
           onClick={handleSave}
-          className="flex items-center gap-2 bg-[#007A3F] text-white px-6 py-2 rounded"
+          className="bg-[#007A3F] text-white px-6 py-2 rounded"
         >
           <BiSave /> Save
-        </button>
-      </div>
-
-      <div className="print:hidden flex justify-center gap-4 mt-4">
-        <button onClick={handleShare}>
-          <FiShare2 size={22} />
         </button>
 
         <button
           onClick={handleMarkComplete}
           disabled={completed}
-          className={`px-4 py-2 rounded text-white ${
+          className={`px-6 py-2 rounded text-white ${
             completed ? "bg-green-500" : "bg-[#007A3F]"
           }`}
         >
@@ -225,13 +164,17 @@ export default function Customerorder({ order = null }) {
         </button>
       </div>
 
-      {/* ===== PRINT STYLES ===== */}
+      {/* ✅ PRINT FIX */}
       <style>{`
         @media print {
-          html, body {
+          @page {
+            size: A4;
             margin: 0;
-            padding: 0;
-            background: #fff;
+          }
+
+          body {
+            margin: 0;
+            background: white;
           }
 
           body * {
@@ -245,25 +188,12 @@ export default function Customerorder({ order = null }) {
 
           .print-page {
             position: fixed;
+            top: 50%;
             left: 50%;
-            top: 25mm;
-            transform: translateX(-50%);
+            transform: translate(-50%, -50%);
             width: 280px !important;
-            padding: 10px !important;
             border: 1px solid #000 !important;
-            box-sizing: border-box;
-            page-break-inside: avoid;
-            break-inside: avoid;
-            border-radius: 0 !important;
-            background: #fff;
-          }
-
-          hr {
-            border-top: 1px dashed #000;
-          }
-
-          @page {
-            margin: 0;
+            background: white !important;
           }
         }
       `}</style>
@@ -271,7 +201,6 @@ export default function Customerorder({ order = null }) {
   );
 }
 
-/* ===== SMALL COMPONENTS ===== */
 function Row({ label, value }) {
   return (
     <div className="flex justify-between text-[12px]">
@@ -282,11 +211,12 @@ function Row({ label, value }) {
 }
 
 function Eye({ title, eye = {} }) {
+  const format = (v) => (v == null || v === "" ? "-" : Number(v).toFixed(2));
   return (
     <div className="text-[12px]">
       <p className="font-semibold">{title}</p>
-      <p>SPH: {eye?.sph ?? "-"}</p>
-      <p>CYL: {eye?.cyl ?? "-"}</p>
+      <p>SPH: {format(eye?.sph)}</p>
+      <p>CYL: {format(eye?.cyl)}</p>
       <p>AXIS: {eye?.axis ?? "-"}</p>
     </div>
   );

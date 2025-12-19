@@ -12,6 +12,7 @@ export default function Settings() {
   const [facebook, setFacebook] = useState("");
   const [instagram, setInstagram] = useState("");
   const [website, setWebsite] = useState("");
+  const [deleteChecked, setDeleteChecked] = useState(false);
   const toast = useToast();
   const navigate = useNavigate();
 
@@ -26,11 +27,38 @@ export default function Settings() {
         setInstagram(u.instagramId || "");
         setWebsite(u.website || "");
       })
-      .catch(() => {
-        // not logged in or profile fetch failed — keep defaults
-      });
+      .catch(() => {});
     return () => (mounted = false);
   }, []);
+
+  const handleDeleteAccount = async () => {
+    if (!deleteChecked) {
+      toast.addToast("Please check 'Delete My Shop Account' to confirm", { type: "error" });
+      return;
+    }
+
+    const confirmed = window.confirm(
+      "Are you sure you want to delete your shop account? All your data will be saved. Register again with the same email to restore everything."
+    );
+    if (!confirmed) return;
+
+    try {
+      await put("/api/user/profile", { deleteAccount: true }, { cacheKey: "profile" });
+
+      toast.addToast("Account deleted successfully. Register again to restore all data.", {
+        type: "success",
+        timeout: 8000,
+      });
+
+      localStorage.removeItem("authToken");
+      sessionStorage.removeItem("authToken");
+      localStorage.clear();
+      navigate("/signin");
+    } catch (err) {
+      console.error("Delete error:", err);
+      toast.addToast("Failed to delete account. Please try again.", { type: "error" });
+    }
+  };
 
   return (
     <div className="w-full bg-white min-h-screen">
@@ -121,6 +149,7 @@ export default function Settings() {
           />
         </div>
       </div>
+
       <div className="mt-8 flex justify-center">
         <button
           className="bg-[#007A3F] text-[18px] text-white py-3 px-14 font-semibold rounded-[28px]"
@@ -140,14 +169,10 @@ export default function Settings() {
               navigate("/home-page");
             } catch (err) {
               if (err && err.status === 401) {
-                toast.addToast("Please log in to save settings", {
-                  type: "error",
-                });
+                toast.addToast("Please log in to save settings", { type: "error" });
                 navigate("/login");
               } else {
-                toast.addToast(err?.body?.message || "Save failed", {
-                  type: "error",
-                });
+                toast.addToast(err?.body?.message || "Save failed", { type: "error" });
               }
             }
           }}
@@ -161,6 +186,8 @@ export default function Settings() {
           type="checkbox"
           id="delete-account"
           className="w-5 h-5 cursor-pointer"
+          checked={deleteChecked}
+          onChange={(e) => setDeleteChecked(e.target.checked)}
         />
         <label
           htmlFor="delete-account"
@@ -171,7 +198,10 @@ export default function Settings() {
       </div>
 
       <div className="mt-8 flex justify-center">
-        <button className="bg-[#FF0000] text-[18px] text-white py-3 px-20 font-semibold rounded-[28px] mb-8">
+        <button
+          onClick={handleDeleteAccount}
+          className="bg-[#FF0000] text-[18px] text-white py-3 px-20 font-semibold rounded-[28px] mb-8"
+        >
           Confirm
         </button>
       </div>

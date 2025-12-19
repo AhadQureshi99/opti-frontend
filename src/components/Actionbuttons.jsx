@@ -12,10 +12,14 @@ import { BiCube } from "react-icons/bi";
 import { Link } from "react-router-dom";
 
 export default function Actionbuttons() {
+  // Check if current user is a sub-user
+  const isSubUser =
+    typeof window !== "undefined" &&
+    localStorage.getItem("isSubUser") === "true";
+
   return (
     <div className="grid grid-cols-3 md:grid-cols-3 gap-3 md:gap-6 mt-6 mx-2 md:mx-5 mb-6">
-
-      {/* BUTTON COMPONENT */}
+      {/* New Order */}
       <Link
         to="/new-order"
         className="bg-[#169D53] text-white md:text-lg text-sm font-semibold 
@@ -26,6 +30,7 @@ export default function Actionbuttons() {
         <span>New Order</span>
       </Link>
 
+      {/* Pending Order */}
       <Link
         to="/pending-order"
         className="bg-[#169D53] text-white md:text-lg text-sm font-semibold 
@@ -36,6 +41,7 @@ export default function Actionbuttons() {
         <span>Pending Order</span>
       </Link>
 
+      {/* Complete Order */}
       <Link
         to="/complete-order"
         className="bg-[#169D53] text-white md:text-lg text-sm font-semibold 
@@ -46,6 +52,7 @@ export default function Actionbuttons() {
         <span>Complete Order</span>
       </Link>
 
+      {/* Search Record */}
       <Link
         to="/search-record"
         className="bg-[#169D53] text-white md:text-lg text-sm font-semibold 
@@ -56,6 +63,7 @@ export default function Actionbuttons() {
         <span>Search Record</span>
       </Link>
 
+      {/* Add Record */}
       <Link
         to="/add-record"
         className="bg-[#169D53] text-white md:text-lg text-sm font-semibold 
@@ -66,16 +74,20 @@ export default function Actionbuttons() {
         <span>Add Record</span>
       </Link>
 
-      <Link
-        to="/salesrecord"
-        className="bg-[#169D53] text-white md:text-lg text-sm font-semibold 
-          text-center py-4 px-3 md:py-6 md:px-5 rounded-xl whitespace-nowrap
-          flex flex-col items-center justify-center gap-2 transition-all duration-300 hover:bg-green-700"
-      >
-        <FaArrowTrendUp className="text-3xl md:text-4xl" />
-        <span>Sale Record</span>
-      </Link>
+      {/* Sale Record - HIDDEN FOR SUB-USERS */}
+      {!isSubUser && (
+        <Link
+          to="/salesrecord"
+          className="bg-[#169D53] text-white md:text-lg text-sm font-semibold 
+            text-center py-4 px-3 md:py-6 md:px-5 rounded-xl whitespace-nowrap
+            flex flex-col items-center justify-center gap-2 transition-all duration-300 hover:bg-green-700"
+        >
+          <FaArrowTrendUp className="text-3xl md:text-4xl" />
+          <span>Sale Record</span>
+        </Link>
+      )}
 
+      {/* My Shop */}
       <Link
         to="/mynewshop"
         className="bg-[#169D53] text-white md:text-lg text-sm font-semibold 
@@ -86,6 +98,7 @@ export default function Actionbuttons() {
         <span>My Shop</span>
       </Link>
 
+      {/* Transpose Calculator */}
       <Link
         to="/calculator"
         className="bg-[#169D53] text-white md:text-lg text-sm font-semibold 
@@ -96,6 +109,7 @@ export default function Actionbuttons() {
         <span>Transpose</span>
       </Link>
 
+      {/* Add Expense */}
       <Link
         to="/addexpense"
         className="bg-[#169D53] text-white md:text-lg text-sm font-semibold 

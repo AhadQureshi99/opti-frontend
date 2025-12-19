@@ -1,36 +1,112 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { FaArrowLeft } from "react-icons/fa";
-import CustomDropdown from "../components/CustomDropdown";
+import { RiArrowDropDownLine } from "react-icons/ri";
 
-// REAL OpticTool-style generator: 0.00 in center
+// Generate optic options: HIGHEST positive at top → down to 0.00 → negatives at bottom
 function generateOpticList(maxPlus, maxMinus, step) {
   const arr = [];
 
-  // negative values ↑↑↑ scrolling up
-  for (let v = maxMinus; v >= step; v -= step) {
-    arr.push("-" + v.toFixed(2));
+  // Positive values: from +maxPlus down to +0.25 (highest at top)
+  for (let v = maxPlus; v >= step; v -= step) {
+    arr.push("+" + v.toFixed(2));
   }
 
-  // center value
+  // Center: 0.00
   arr.push("0.00");
 
-  // positive values ↓↓↓ scrolling down
-  for (let v = step; v <= maxPlus; v += step) {
-    arr.push("+" + v.toFixed(2));
+  // Negative values: from -0.25 down to -maxMinus
+  for (let v = step; v <= maxMinus; v += step) {
+    arr.push("-" + v.toFixed(2));
   }
 
   return arr;
 }
 
-// Formatter
+// Instant-open Custom Dropdown
+function CustomDropdown({ options, value, onChange, placeholder = "Select" }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef(null);
+  const listRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // On open: center on "0.00", then scroll up slightly so low positives (+0.25 etc.) are visible above
+  useEffect(() => {
+    if (isOpen && listRef.current) {
+      const zeroItem = listRef.current.querySelector('[data-value="0.00"]');
+      if (zeroItem) {
+        zeroItem.scrollIntoView({ block: "center" });
+
+        // Adjust upward to show a few low positive values above 0.00
+        setTimeout(() => {
+          if (listRef.current) {
+            const itemHeight = zeroItem.offsetHeight || 56; // approximate item height
+            listRef.current.scrollTop -= itemHeight * 1.5; // tweak as needed
+          }
+        }, 0);
+      }
+    }
+  }, [isOpen]);
+
+  return (
+    <div ref={dropdownRef} className="relative w-full mt-2">
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full border border-gray-300 hover:border-green-600 rounded-lg px-5 py-4 text-base font-medium focus:outline-none focus:ring-2 focus:ring-green-600 transition-all text-left flex justify-between items-center bg-white"
+      >
+        <span className="text-black">{value || placeholder}</span>
+        <RiArrowDropDownLine
+          size={24}
+          className={`text-gray-600 transition-transform ${isOpen ? "rotate-180" : ""}`}
+        />
+      </button>
+
+      {isOpen && (
+        <div
+          ref={listRef}
+          className="absolute left-0 right-0 top-full mt-2 max-h-96 overflow-y-auto border border-gray-300 bg-white rounded-lg shadow-2xl z-50"
+        >
+          {options.map((option) => (
+            <button
+              key={option}
+              type="button"
+              data-value={option}
+              onClick={() => {
+                onChange({ target: { value: option } });
+                setIsOpen(false);
+              }}
+              className={`w-full text-left px-6 py-3 text-base transition-colors ${
+                value === option
+                  ? "bg-green-600 text-white font-semibold"
+                  : "hover:bg-green-50"
+              }`}
+            >
+              {option}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Helper functions
 function fmt(n) {
   const x = Number(n);
   if (isNaN(x)) return "0.00";
   return (x >= 0 ? "+" : "") + x.toFixed(2);
 }
 
-// Transpose (minus <-> plus cylinder)
 function transposeRx(sph, cyl, axis) {
   const newSph = Number(sph) + Number(cyl);
   const newCyl = -Number(cyl);
@@ -40,7 +116,6 @@ function transposeRx(sph, cyl, axis) {
   return { sphere: newSph, cylinder: newCyl, axis: newAxis };
 }
 
-// Calculate cross numbers (principal meridians)
 function calculateCrossNumbers(sph, cyl, axis) {
   const s = Number(sph) || 0;
   const c = Number(cyl) || 0;
@@ -59,17 +134,12 @@ function formatOpticalNumber(num) {
   return n > 0 ? `+${formatted}` : `-${formatted}`;
 }
 
-function formatAxis(axis) {
-  if (!axis && axis !== 0) return "";
-  return String(axis).padStart(3, "0") + "°";
-}
-
 export default function OpticCalculator() {
   const navigate = useNavigate();
 
-  // Options
-  const sphOptions = ["Select", ...generateOpticList(24, 24, 0.25)];
-  const cylOptions = ["Select", ...generateOpticList(6, 6, 0.25)];
+  // Options - highest positive at top now
+  const sphOptions = generateOpticList(24, 24, 0.25);
+  const cylOptions = generateOpticList(6, 6, 0.25);
   const addOptions = [
     "Select",
     ...Array.from({ length: 12 }, (_, i) => "+" + ((i + 1) * 0.25).toFixed(2)),
@@ -86,34 +156,34 @@ export default function OpticCalculator() {
 
   const [add, setAdd] = useState("Select");
 
-  // Results (store objects for richer displays)
   const [rResults, setRResults] = useState(null);
   const [lResults, setLResults] = useState(null);
 
   const parseVal = (v) => {
-    if (v === "Select" || v === "") return 0;
+    if (v === "Select" || !v) return 0;
     return Number(v);
   };
 
   const calculate = () => {
     const rS = parseVal(rs);
     const rC = parseVal(rc);
-    const rA = ra ? Number(ra) : "";
+    const rA = ra ? Number(ra) : 0;
 
     const lS = parseVal(ls);
     const lC = parseVal(lc);
-    const lA = la ? Number(la) : "";
+    const lA = la ? Number(la) : 0;
 
-    const addPower = add === "Select" ? 0 : Number(add);
-    // Build Right eye results
-    const right = {};
-    right.distance = {
-      sph: rS,
-      cyl: rC,
-      axis: rA || 0,
-      display: `Sph: ${formatOpticalNumber(rS)}, Cyl: ${formatOpticalNumber(
-        rC
-      )}, Axis: ${rA || ""}`,
+    const addPower = add === "Select" ? 0 : parseVal(add);
+
+    // Right Eye
+    const right = {
+      distance: {
+        sph: rS,
+        cyl: rC,
+        axis: rA,
+        display: `Sph: ${formatOpticalNumber(rS)}  Cyl: ${formatOpticalNumber(rC)}  Axis: ${rA || "-"}°`,
+      },
+      cross: calculateCrossNumbers(rS, rC, rA),
     };
 
     if (rC !== 0) {
@@ -122,9 +192,7 @@ export default function OpticCalculator() {
         sphere: t.sphere,
         cylinder: t.cylinder,
         axis: t.axis,
-        display: `Sph: ${formatOpticalNumber(
-          t.sphere
-        )}, Cyl: ${formatOpticalNumber(t.cylinder)}, Axis: ${t.axis}`,
+        display: `Sph: ${formatOpticalNumber(t.sphere)}  Cyl: ${formatOpticalNumber(t.cylinder)}  Axis: ${t.axis}°`,
       };
     }
 
@@ -133,36 +201,29 @@ export default function OpticCalculator() {
       right.near = {
         sph: nearSph,
         cyl: rC,
-        axis: rA || 0,
-        display: `Sph: ${formatOpticalNumber(
-          nearSph
-        )}, Cyl: ${formatOpticalNumber(rC)}, Axis: ${rA || ""}`,
+        axis: rA,
+        display: `Sph: ${formatOpticalNumber(nearSph)}  Cyl: ${formatOpticalNumber(rC)}  Axis: ${rA || "-"}°`,
       };
-
       if (rC !== 0) {
         const tn = transposeRx(nearSph, rC, rA);
         right.nearTransposed = {
           sphere: tn.sphere,
           cylinder: tn.cylinder,
           axis: tn.axis,
-          display: `Sph: ${formatOpticalNumber(
-            tn.sphere
-          )}, Cyl: ${formatOpticalNumber(tn.cylinder)}, Axis: ${tn.axis}`,
+          display: `Sph: ${formatOpticalNumber(tn.sphere)}  Cyl: ${formatOpticalNumber(tn.cylinder)}  Axis: ${tn.axis}°`,
         };
       }
     }
 
-    right.cross = calculateCrossNumbers(rS, rC, rA);
-
-    // Build Left eye results
-    const left = {};
-    left.distance = {
-      sph: lS,
-      cyl: lC,
-      axis: lA || 0,
-      display: `Sph: ${formatOpticalNumber(lS)}, Cyl: ${formatOpticalNumber(
-        lC
-      )}, Axis: ${lA || ""}`,
+    // Left Eye
+    const left = {
+      distance: {
+        sph: lS,
+        cyl: lC,
+        axis: lA,
+        display: `Sph: ${formatOpticalNumber(lS)}  Cyl: ${formatOpticalNumber(lC)}  Axis: ${lA || "-"}°`,
+      },
+      cross: calculateCrossNumbers(lS, lC, lA),
     };
 
     if (lC !== 0) {
@@ -171,9 +232,7 @@ export default function OpticCalculator() {
         sphere: t.sphere,
         cylinder: t.cylinder,
         axis: t.axis,
-        display: `Sph: ${formatOpticalNumber(
-          t.sphere
-        )}, Cyl: ${formatOpticalNumber(t.cylinder)}, Axis: ${t.axis}`,
+        display: `Sph: ${formatOpticalNumber(t.sphere)}  Cyl: ${formatOpticalNumber(t.cylinder)}  Axis: ${t.axis}°`,
       };
     }
 
@@ -182,26 +241,19 @@ export default function OpticCalculator() {
       left.near = {
         sph: nearSphL,
         cyl: lC,
-        axis: lA || 0,
-        display: `Sph: ${formatOpticalNumber(
-          nearSphL
-        )}, Cyl: ${formatOpticalNumber(lC)}, Axis: ${lA || ""}`,
+        axis: lA,
+        display: `Sph: ${formatOpticalNumber(nearSphL)}  Cyl: ${formatOpticalNumber(lC)}  Axis: ${lA || "-"}°`,
       };
-
       if (lC !== 0) {
         const tn = transposeRx(nearSphL, lC, lA);
         left.nearTransposed = {
           sphere: tn.sphere,
           cylinder: tn.cylinder,
           axis: tn.axis,
-          display: `Sph: ${formatOpticalNumber(
-            tn.sphere
-          )}, Cyl: ${formatOpticalNumber(tn.cylinder)}, Axis: ${tn.axis}`,
+          display: `Sph: ${formatOpticalNumber(tn.sphere)}  Cyl: ${formatOpticalNumber(tn.cylinder)}  Axis: ${tn.axis}°`,
         };
       }
     }
-
-    left.cross = calculateCrossNumbers(lS, lC, lA);
 
     setRResults(right);
     setLResults(left);
@@ -211,236 +263,212 @@ export default function OpticCalculator() {
     setRs("0.00");
     setRc("0.00");
     setRa("");
-
     setLs("0.00");
     setLc("0.00");
     setLa("");
-
     setAdd("Select");
     setRResults(null);
     setLResults(null);
   };
 
   return (
-    <div className="w-full flex justify-center py-10 bg-gray-100">
-      <div className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-4xl">
+    <div className="w-full min-h-screen bg-gray-50 py-10 px-4">
+      <div className="max-w-5xl mx-auto bg-white rounded-3xl shadow-2xl p-8 md:p-12">
         <button
           onClick={() => navigate(-1)}
-          className="flex items-center gap-2 mb-4 text-[#169D53] hover:text-[#0f7a42] transition-colors"
+          className="flex items-center gap-3 text-green-700 hover:text-green-800 font-medium mb-6 transition-colors"
         >
-          <FaArrowLeft className="text-lg" />
+          <FaArrowLeft className="text-xl" />
           Back
         </button>
-        <h1 className="text-3xl font-bold text-center text-[#169D53] mb-6">
+
+        <h1 className="text-4xl font-bold text-center text-green-700 mb-4">
           Optical Distance & Near Calculator
         </h1>
-
-        <p className="text-center text-gray-600 mb-10">
-          Quick, Accurate prescription transposition for Distance and Near
-          Vision.
+        <p className="text-center text-gray-600 text-lg mb-12">
+          Quick and accurate prescription transposition for Distance and Near Vision
         </p>
 
-        {/* Inputs */}
-        <div className="grid md:grid-cols-2 gap-10">
+        {/* Input Section */}
+        <div className="grid md:grid-cols-2 gap-12 mb-12">
           {/* Right Eye */}
-          <div>
-            <h2 className="bg-[#169D53] text-white text-center py-2 rounded-lg mb-4">
+          <div className="space-y-8">
+            <h2 className="text-2xl font-bold text-center text-white bg-green-700 py-4 rounded-2xl">
               Right Eye (OD)
             </h2>
 
-            <label>Sph</label>
-            <CustomDropdown
-              value={rs}
-              onChange={(e) => setRs(e.target.value)}
-              options={sphOptions}
-              isScrollable={true}
-            />
+            <div>
+              <label className="block text-lg font-semibold mb-2">Sph</label>
+              <CustomDropdown
+                options={sphOptions}
+                value={rs}
+                onChange={(e) => setRs(e.target.value)}
+                placeholder="Select Sph"
+              />
+            </div>
 
-            <label className="mt-4 block">Cyl</label>
-            <CustomDropdown
-              value={rc}
-              onChange={(e) => setRc(e.target.value)}
-              options={cylOptions}
-              isScrollable={true}
-            />
+            <div>
+              <label className="block text-lg font-semibold mb-2">Cyl</label>
+              <CustomDropdown
+                options={cylOptions}
+                value={rc}
+                onChange={(e) => setRc(e.target.value)}
+                placeholder="Select Cyl"
+              />
+            </div>
 
-            <label className="mt-4 block">Axis</label>
-            <input
-              type="text"
-              inputMode="numeric"
-              pattern="[0-9]*"
-              value={ra}
-              placeholder="1 to 180"
-              onChange={(e) => setRa(e.target.value)}
-              className="w-full border p-2 rounded-lg"
-            />
+            <div>
+              <label className="block text-lg font-semibold mb-2">Axis</label>
+              <input
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                value={ra}
+                onChange={(e) => setRa(e.target.value.replace(/\D/g, "").slice(0, 3))}
+                placeholder="1 - 180"
+                className="w-full border-2 border-gray-300 rounded-xl px-6 py-4 text-base focus:border-green-600 focus:outline-none transition-all"
+              />
+            </div>
           </div>
 
           {/* Left Eye */}
-          <div>
-            <h2 className="bg-[#169D53] text-white text-center py-2 rounded-lg mb-4">
+          <div className="space-y-8">
+            <h2 className="text-2xl font-bold text-center text-white bg-green-700 py-4 rounded-2xl">
               Left Eye (OS)
             </h2>
 
-            <label>Sph</label>
-            <CustomDropdown
-              value={ls}
-              onChange={(e) => setLs(e.target.value)}
-              options={sphOptions}
-              isScrollable={true}
-            />
+            <div>
+              <label className="block text-lg font-semibold mb-2">Sph</label>
+              <CustomDropdown
+                options={sphOptions}
+                value={ls}
+                onChange={(e) => setLs(e.target.value)}
+                placeholder="Select Sph"
+              />
+            </div>
 
-            <label className="mt-4 block">Cyl</label>
-            <CustomDropdown
-              value={lc}
-              onChange={(e) => setLc(e.target.value)}
-              options={cylOptions}
-              isScrollable={true}
-            />
+            <div>
+              <label className="block text-lg font-semibold mb-2">Cyl</label>
+              <CustomDropdown
+                options={cylOptions}
+                value={lc}
+                onChange={(e) => setLc(e.target.value)}
+                placeholder="Select Cyl"
+              />
+            </div>
 
-            <label className="mt-4 block">Axis</label>
-            <input
-              type="text"
-              inputMode="numeric"
-              pattern="[0-9]*"
-              value={la}
-              placeholder="1 to 180"
-              onChange={(e) => setLa(e.target.value)}
-              className="w-full border p-2 rounded-lg"
-            />
+            <div>
+              <label className="block text-lg font-semibold mb-2">Axis</label>
+              <input
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                value={la}
+                onChange={(e) => setLa(e.target.value.replace(/\D/g, "").slice(0, 3))}
+                placeholder="1 - 180"
+                className="w-full border-2 border-gray-300 rounded-xl px-6 py-4 text-base focus:border-green-600 focus:outline-none transition-all"
+              />
+            </div>
           </div>
         </div>
 
-        {/* Addition */}
-        <div className="mt-10">
-          <h2 className="text-center font-bold mb-3 text-xl">Addition (ADD)</h2>
+        {/* ADD */}
+        <div className="max-w-md mx-auto mb-12">
+          <h2 className="text-2xl font-bold text-center mb-4">Addition (ADD)</h2>
           <CustomDropdown
+            options={addOptions}
             value={add}
             onChange={(e) => setAdd(e.target.value)}
-            options={addOptions}
-            isScrollable={true}
+            placeholder="Select ADD"
           />
         </div>
 
-        {/* Buttons */}
-        <div className="flex justify-center gap-6 mt-10">
+        {/* Action Buttons */}
+        <div className="flex justify-center gap-8 mb-16">
           <button
             onClick={calculate}
-            className="bg-[#169D53] text-white px-10 py-3 rounded-xl font-bold text-lg hover:opacity-90"
+            className="bg-green-700 hover:bg-green-800 text-white font-bold text-xl px-16 py-5 rounded-2xl shadow-lg transition-all"
           >
             Transpose
           </button>
-
           <button
             onClick={reset}
-            className="bg-gray-600 text-white px-10 py-3 rounded-xl font-bold text-lg hover:opacity-90"
+            className="bg-gray-700 hover:bg-gray-800 text-white font-bold text-xl px-16 py-5 rounded-2xl shadow-lg transition-all"
           >
             Reset
           </button>
         </div>
 
         {/* Results */}
-        <div className="mt-12 grid md:grid-cols-2 gap-10">
-          <div>
-            <h3 className="text-xl font-bold text-[#169D53] mb-3">
-              Right Eye Results
-            </h3>
-            {rResults ? (
-              <div>
-                <p>
-                  <b>Dist :</b> {rResults.distance.display}
-                </p>
+        {(rResults || lResults) && (
+          <div className="grid md:grid-cols-2 gap-12">
+            {/* Right Eye Results */}
+            <div className="bg-green-50 rounded-2xl p-8 border border-green-200">
+              <h3 className="text-2xl font-bold text-green-800 mb-6 text-center">
+                Right Eye Results
+              </h3>
+              <div className="space-y-4 text-lg">
+                <p><strong>Distance:</strong> {rResults.distance.display}</p>
                 {rResults.transposed && (
-                  <p className="mt-2 text-blue-700">
-                    <b>Transposed :</b> {rResults.transposed.display}
+                  <p className="text-blue-700 font-medium">
+                    <strong>Transposed:</strong> {rResults.transposed.display}
                   </p>
                 )}
-
-                <div className="cross-numbers mt-3">
-                  <small>
-                    <b>Cross Numbers:</b>
-                  </small>
-                  <div className="mt-1 font-mono">
-                    {formatOpticalNumber(rResults.cross.power1)} @{" "}
-                    {rResults.cross.axis1}°
-                  </div>
-                  <div className="font-mono">
-                    {formatOpticalNumber(rResults.cross.power2)} @{" "}
-                    {rResults.cross.axis2}°
-                  </div>
+                <div className="mt-4 bg-white rounded-xl p-4 font-mono text-base">
+                  <small className="block text-gray-600 mb-1">Cross Cylinder:</small>
+                  {formatOpticalNumber(rResults.cross.power1)} @ {rResults.cross.axis1}°<br/>
+                  {formatOpticalNumber(rResults.cross.power2)} @ {rResults.cross.axis2}°
                 </div>
-
                 {rResults.near && (
                   <>
-                    <p className="mt-3">
-                      <b>Near :</b> {rResults.near.display}
-                    </p>
+                    <p className="mt-4"><strong>Near:</strong> {rResults.near.display}</p>
                     {rResults.nearTransposed && (
-                      <p className="mt-2 text-blue-700">
-                        <b>Near Transposed :</b>{" "}
-                        {rResults.nearTransposed.display}
+                      <p className="text-blue-700 font-medium">
+                        <strong>Near Transposed:</strong> {rResults.nearTransposed.display}
                       </p>
                     )}
                   </>
                 )}
               </div>
-            ) : (
-              <p className="text-gray-500">
-                No results yet. Enter values and tap Transpose.
-              </p>
-            )}
-          </div>
+            </div>
 
-          <div>
-            <h3 className="text-xl font-bold text-[#169D53] mb-3">
-              Left Eye Results
-            </h3>
-            {lResults ? (
-              <div>
-                <p>
-                  <b>Dist :</b> {lResults.distance.display}
-                </p>
+            {/* Left Eye Results */}
+            <div className="bg-green-50 rounded-2xl p-8 border border-green-200">
+              <h3 className="text-2xl font-bold text-green-800 mb-6 text-center">
+                Left Eye Results
+              </h3>
+              <div className="space-y-4 text-lg">
+                <p><strong>Distance:</strong> {lResults.distance.display}</p>
                 {lResults.transposed && (
-                  <p className="mt-2 text-blue-700">
-                    <b>Transposed :</b> {lResults.transposed.display}
+                  <p className="text-blue-700 font-medium">
+                    <strong>Transposed:</strong> {lResults.transposed.display}
                   </p>
                 )}
-
-                <div className="cross-numbers mt-3">
-                  <small>
-                    <b>Cross Numbers:</b>
-                  </small>
-                  <div className="mt-1 font-mono">
-                    {formatOpticalNumber(lResults.cross.power1)} @{" "}
-                    {lResults.cross.axis1}°
-                  </div>
-                  <div className="font-mono">
-                    {formatOpticalNumber(lResults.cross.power2)} @{" "}
-                    {lResults.cross.axis2}°
-                  </div>
+                <div className="mt-4 bg-white rounded-xl p-4 font-mono text-base">
+                  <small className="block text-gray-600 mb-1">Cross Cylinder:</small>
+                  {formatOpticalNumber(lResults.cross.power1)} @ {lResults.cross.axis1}°<br/>
+                  {formatOpticalNumber(lResults.cross.power2)} @ {lResults.cross.axis2}°
                 </div>
-
                 {lResults.near && (
                   <>
-                    <p className="mt-3">
-                      <b>Near :</b> {lResults.near.display}
-                    </p>
+                    <p className="mt-4"><strong>Near:</strong> {lResults.near.display}</p>
                     {lResults.nearTransposed && (
-                      <p className="mt-2 text-blue-700">
-                        <b>Near Transposed :</b>{" "}
-                        {lResults.nearTransposed.display}
+                      <p className="text-blue-700 font-medium">
+                        <strong>Near Transposed:</strong> {lResults.nearTransposed.display}
                       </p>
                     )}
                   </>
                 )}
               </div>
-            ) : (
-              <p className="text-gray-500">
-                No results yet. Enter values and tap Transpose.
-              </p>
-            )}
+            </div>
           </div>
-        </div>
+        )}
+
+        {!rResults && !lResults && (
+          <p className="text-center text-gray-500 text-lg mt-10">
+            Enter prescription values and click "Transpose" to see results.
+          </p>
+        )}
       </div>
     </div>
   );

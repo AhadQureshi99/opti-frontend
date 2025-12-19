@@ -55,6 +55,10 @@ export default function Addexpense() {
         "Accessories",
         "Repair and Maintenance",
         "New Asset Purchase",
+        "Shoprent",
+        "Welfare",
+        "UtilityBills",
+        "Other Expense",
       ];
 
       if (!validCategories.includes(payload.category)) {
@@ -166,6 +170,10 @@ export default function Addexpense() {
                 "Accessories",
                 "Repair and Maintenance",
                 "New Asset Purchase",
+                "Shoprent",
+                "Welfare",
+                "UtilityBills",
+                "Other Expense",
               ]}
               value={value}
               onChange={(e) => setValue(e.target.value)}

@@ -5,37 +5,28 @@ import { post, put } from "../utils/api";
 import { useToast } from "../components/ToastProvider";
 import { RiArrowDropDownLine } from "react-icons/ri";
 
-// Generate optic options: starts at 0, minus when scroll up, plus when scroll down
 function generateOpticList(maxPlus, maxMinus, step) {
   const arr = [];
-
-  // negative values ↑↑↑ scrolling up
-  for (let v = maxMinus; v >= step; v -= step) {
-    arr.push("-" + v.toFixed(2));
-  }
-
-  // center value
-  arr.push("0.00");
-
-  // positive values ↓↓↓ scrolling down
-  for (let v = step; v <= maxPlus; v += step) {
+  for (let v = maxPlus; v >= step; v -= step) {
     arr.push("+" + v.toFixed(2));
   }
-
+  arr.push("0.00");
+  for (let v = step; v <= maxMinus; v += step) {
+    arr.push("-" + v.toFixed(2));
+  }
   return arr;
 }
 
-// Custom Dropdown Component
 function CustomDropdown({
   options,
   value,
   onChange,
   name,
-  isScrollable = false,
+  placeholder = "Select",
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
-  const scrollContainerRef = useRef(null);
+  const listRef = useRef(null);
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -43,72 +34,36 @@ function CustomDropdown({
         setIsOpen(false);
       }
     };
-
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Scroll to selected value when dropdown opens
   useEffect(() => {
-    if (isOpen && isScrollable && scrollContainerRef.current) {
-      setTimeout(() => {
-        const selectedElement = scrollContainerRef.current?.querySelector(
-          "[data-selected='true']"
-        );
-        if (selectedElement) {
-          selectedElement.scrollIntoView({
-            behavior: "smooth",
-            block: "center",
-          });
-        }
-      }, 0);
-    }
-  }, [isOpen, isScrollable]);
-
-  const handleScroll = (e) => {
-    if (!isScrollable) return;
-
-    const container = scrollContainerRef.current;
-    if (!container) return;
-
-    // Get all value buttons
-    const buttons = Array.from(container.querySelectorAll("[data-value]"));
-    if (buttons.length === 0) return;
-
-    const scrollTop = container.scrollTop;
-    const containerHeight = container.clientHeight;
-    const centerY = scrollTop + containerHeight / 2;
-
-    let closestButton = buttons[0];
-    let closestDistance = Math.abs(
-      closestButton.offsetTop + closestButton.offsetHeight / 2 - centerY
-    );
-
-    for (let btn of buttons) {
-      const distance = Math.abs(btn.offsetTop + btn.offsetHeight / 2 - centerY);
-      if (distance < closestDistance) {
-        closestDistance = distance;
-        closestButton = btn;
+    if (isOpen && listRef.current) {
+      const zeroItem = listRef.current.querySelector('[data-value="0.00"]');
+      if (zeroItem) {
+        zeroItem.scrollIntoView({ block: "center" });
+        setTimeout(() => {
+          if (listRef.current) {
+            const itemHeight = zeroItem.offsetHeight || 48;
+            listRef.current.scrollTop -= itemHeight * 1.5;
+          }
+        }, 0);
       }
     }
-
-    const option = closestButton.getAttribute("data-value");
-    if (option && option !== value) {
-      onChange({ target: { name, value: option } });
-    }
-  };
+  }, [isOpen]);
 
   return (
     <div ref={dropdownRef} className="relative w-full">
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full border border-gray-300 hover:border-green-600 rounded-lg p-1 sm:p-3 text-xs sm:text-sm md:text-base focus:outline-none focus:ring-2 focus:ring-green-600 transition-all text-left flex justify-between items-center"
+        className="w-full border border-gray-300 hover:border-green-600 rounded-lg px-4 py-3 text-sm md:text-base focus:outline-none focus:ring-2 focus:ring-green-600 transition-all text-left flex justify-between items-center bg-white"
       >
-        <span className="flex-1 text-left text-black">{value || "Select"}</span>
+        <span className="text-black">{value || placeholder}</span>
         <RiArrowDropDownLine
-          size={20}
-          className={`text-gray-500 flex-shrink-0 transition-transform ${
+          size={22}
+          className={`text-gray-600 transition-transform ${
             isOpen ? "rotate-180" : ""
           }`}
         />
@@ -116,28 +71,22 @@ function CustomDropdown({
 
       {isOpen && (
         <div
-          ref={scrollContainerRef}
-          onScroll={handleScroll}
-          className={`absolute right-0 top-full mt-1 w-1/2 border border-gray-300 bg-white rounded-lg shadow-lg z-10 ${
-            isScrollable
-              ? "max-h-48 overflow-y-scroll snap-y snap-mandatory"
-              : "max-h-48 overflow-y-auto"
-          }`}
+          ref={listRef}
+          className="absolute left-0 right-0 top-full mt-2 max-h-96 overflow-y-auto border border-gray-300 bg-white rounded-lg shadow-xl z-50"
         >
           {options.map((option) => (
             <button
               key={option}
               type="button"
               data-value={option}
-              data-selected={value === option}
               onClick={() => {
                 onChange({ target: { name, value: option } });
                 setIsOpen(false);
               }}
-              className={`w-full text-left px-3 py-2 text-xs sm:text-sm transition-colors snap-center ${
+              className={`w-full text-left px-5 py-3 text-sm transition-colors ${
                 value === option
                   ? "bg-green-600 text-white font-semibold"
-                  : "hover:bg-green-100"
+                  : "hover:bg-green-50"
               }`}
             >
               {option}
@@ -159,20 +108,20 @@ export default function Neworder() {
   const [isEditing, setIsEditing] = useState(false);
   const [orderId, setOrderId] = useState(null);
 
-  // Generate Sph options (like Calculator - with 0 in center)
   const sphOptions = generateOpticList(24, 24, 0.25);
-
-  // Generate Cyl options (like Calculator - with 0 in center)
   const cylOptions = generateOpticList(6, 6, 0.25);
-
-  // Generate Axis options (1 to 180)
-  const axisOptions = [...Array(180)].map((_, i) => (i + 1).toString());
-
-  // Addition options (use same as calculator: +0.25 to +3.00)
   const addOptions = [
     "Select",
     ...Array.from({ length: 12 }, (_, i) => "+" + ((i + 1) * 0.25).toFixed(2)),
   ];
+
+  // Pre-filled special notes (editable)
+  const defaultSpecialNote = `1. Pick Your Glasses Within 7 Days.
+2. Order Can't Process Without 50% Advance.
+3. Can't Claim If Contact Lens Dries Or Breaks.
+4. No Guarantee / Warranty of Any Ordinary Frames.
+5. During Fitting & Repairing, We Are Not Responsible for Any Damage.
+6. Purchased Frames Or Reading Glasses Can Be Returned or Change within 2 Days`;
 
   const [form, setForm] = useState({
     patientName: "",
@@ -182,9 +131,7 @@ export default function Neworder() {
     totalAmount: "",
     advance: "",
     deliveryDate: "",
-    note: "",
-    importantNote: "",
-    specialNote: "",
+    specialNote: defaultSpecialNote, // ← Pre-filled here
     rightSph: "0.00",
     rightCyl: "0.00",
     rightAxis: "",
@@ -199,13 +146,8 @@ export default function Neworder() {
       setIsEditing(true);
       setOrderId(editingOrder._id || editingOrder.id || null);
 
-      setForm((f) => ({
-        ...f,
-        patientName:
-          editingOrder.patientName ||
-          editingOrder.name ||
-          editingOrder.customerName ||
-          "",
+      setForm({
+        patientName: editingOrder.patientName || "",
         whatsappNumber: editingOrder.whatsappNumber || "",
         frameDetail:
           editingOrder.frameDetails || editingOrder.frameDetail || "",
@@ -219,113 +161,117 @@ export default function Neworder() {
         deliveryDate: editingOrder.deliveryDate
           ? String(editingOrder.deliveryDate).split("T")[0]
           : "",
-        note: editingOrder.note || "",
-        importantNote: editingOrder.importantNote || editingOrder.note || "",
+        specialNote: editingOrder.specialNote || defaultSpecialNote, // Use existing or default
         rightSph:
-          editingOrder.rightEye && editingOrder.rightEye.sph != null
+          editingOrder.rightEye?.sph != null
             ? String(editingOrder.rightEye.sph)
-            : editingOrder.rightSph || "0.00",
+            : "0.00",
         rightCyl:
-          editingOrder.rightEye && editingOrder.rightEye.cyl != null
+          editingOrder.rightEye?.cyl != null
             ? String(editingOrder.rightEye.cyl)
-            : editingOrder.rightCyl || "0.00",
+            : "0.00",
         rightAxis:
-          editingOrder.rightEye && editingOrder.rightEye.axis != null
+          editingOrder.rightEye?.axis != null
             ? String(editingOrder.rightEye.axis)
-            : editingOrder.rightAxis || "",
+            : "",
         leftSph:
-          editingOrder.leftEye && editingOrder.leftEye.sph != null
+          editingOrder.leftEye?.sph != null
             ? String(editingOrder.leftEye.sph)
-            : editingOrder.leftSph || "0.00",
+            : "0.00",
         leftCyl:
-          editingOrder.leftEye && editingOrder.leftEye.cyl != null
+          editingOrder.leftEye?.cyl != null
             ? String(editingOrder.leftEye.cyl)
-            : editingOrder.leftCyl || "0.00",
+            : "0.00",
         leftAxis:
-          editingOrder.leftEye && editingOrder.leftEye.axis != null
+          editingOrder.leftEye?.axis != null
             ? String(editingOrder.leftEye.axis)
-            : editingOrder.leftAxis || "",
+            : "",
         addInput: editingOrder.addInput || editingOrder.add || "Select",
-        specialNote: editingOrder.specialNote || "",
-      }));
+      });
     }
   }, [editingOrder]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setForm((f) => ({ ...f, [name]: value }));
+    setForm((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form.patientName.trim()) {
-      toast.addToast("Please enter patient name", { type: "error" });
-      return;
-    }
-    if (!form.whatsappNumber.trim()) {
-      toast.addToast("Please enter WhatsApp number", { type: "error" });
-      return;
-    }
+    if (!form.patientName.trim())
+      return toast.addToast("Patient name required", { type: "error" });
+    if (!form.whatsappNumber.trim())
+      return toast.addToast("WhatsApp number required", { type: "error" });
 
     try {
       setLoading(true);
       const total = parseFloat(form.totalAmount) || 0;
       const adv = parseFloat(form.advance) || 0;
-      const balance = parseFloat((total - adv).toFixed(2)) || 0;
+      const balance = parseFloat((total - adv).toFixed(2));
+
       const parseNum = (v) => {
-        if (!v) return null;
+        if (!v || v === "Select") return null;
         const n = Number(String(v).replace(/[^0-9+-.]/g, ""));
         return isNaN(n) ? null : n;
       };
 
+      // Generate trackingId on client — same format as server
+      let clientTrackingId = null;
+      if (!isEditing) {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, "0");
+        const day = String(now.getDate()).padStart(2, "0");
+        const randomSuffix = String(Math.floor(Math.random() * 10000)).padStart(4, "0");
+        clientTrackingId = `ord${year}${month}${day}_${randomSuffix}`;
+      }
+
       const body = {
-        patientName: form.patientName,
-        whatsappNumber: form.whatsappNumber,
+        patientName: form.patientName.trim(),
+        whatsappNumber: form.whatsappNumber.trim(),
         frameDetails: form.frameDetail || "",
-        lensType: form.lensType,
+        lensType: form.lensType || "",
         totalAmount: total,
         advance: adv,
         balance,
         deliveryDate: form.deliveryDate || new Date().toISOString(),
-        note: form.note || "",
-        importantNote: form.importantNote || form.note || "",
-        specialNote: form.specialNote || "",
+        specialNote: form.specialNote.trim(), // Save whatever user typed
         rightEye: {
           sph: parseNum(form.rightSph),
           cyl: parseNum(form.rightCyl),
-          axis: parseNum(form.rightAxis),
+          axis: parseNum(form.rightAxis) || null,
         },
         leftEye: {
           sph: parseNum(form.leftSph),
           cyl: parseNum(form.leftCyl),
-          axis: parseNum(form.leftAxis),
+          axis: parseNum(form.leftAxis) || null,
         },
-        addInput: form.addInput || "",
+        addInput: form.addInput === "Select" ? "" : form.addInput,
         status: editingOrder?.status || "pending",
+        ...(clientTrackingId && { trackingId: clientTrackingId }),
       };
 
+      let result;
+
       if (isEditing && orderId) {
-        await put(`/api/orders/${orderId}`, body, {
+        result = await put(`/api/orders/${orderId}`, body, {
           id: orderId,
           cacheKey: "orders",
         });
-        toast.addToast("Order updated", { type: "success" });
-        if (
-          (editingOrder && editingOrder.status) === "completed" ||
-          body.status === "completed"
-        ) {
-          navigate("/complete-order");
-        } else {
-          navigate("/pending-order");
-        }
+        toast.addToast("Order updated successfully", { type: "success" });
       } else {
-        await post("/api/orders/create", body, { cacheKey: "orders" });
-        toast.addToast("Order created", { type: "success" });
-        navigate("/pending-order");
+        result = await post("/api/orders/create", body, { cacheKey: "orders" });
+        const finalTrackingId = result.trackingId || clientTrackingId;
+        toast.addToast("Order created successfully!", { type: "success" });
+        toast.addToast(`Tracking ID: ${finalTrackingId}`, {
+          type: "info",
+          timeout: 10000,
+        });
       }
+
+      navigate("/pending-order");
     } catch (err) {
-      console.error(err);
-      toast.addToast(err?.body?.message || "Failed to create order", {
+      toast.addToast(err?.body?.message || "Failed to save order", {
         type: "error",
       });
     } finally {
@@ -333,272 +279,257 @@ export default function Neworder() {
     }
   };
 
-  const selectClass =
-    "w-full border border-gray-300 hover:border-green-600 rounded-lg p-1 sm:p-3 text-xs sm:text-sm md:text-base focus:outline-none focus:ring-2 focus:ring-green-600 transition-all pr-10";
-
   return (
-    <div className="w-full bg-white min-h-screen pb-10">
-      <div className="relative flex items-center justify-center px-5 sm:px-10 pt-4">
+    <div className="w-full bg-white min-h-screen pb-16">
+      <div className="relative flex items-center justify-center px-5 pt-6">
         <Link to="/home-page">
-          <FaArrowLeft className="absolute left-5 sm:left-10 top-5 w-6 h-6 text-black cursor-pointer hover:text-green-600 hover:-translate-x-1 transition-all duration-300" />
+          <FaArrowLeft className="absolute left-5 top-6 w-7 h-7 text-black hover:text-green-600 transition-all" />
         </Link>
         <img
           src="/Optislipimage.png"
           alt="OptiSlip"
+          className="h-32 sm:h-48"
           style={{ filter: "invert(1) grayscale(1) brightness(0)" }}
-          className="h-[12vh] sm:h-[20vh] sm:ml-8 ml-4"
         />
       </div>
 
-      <form onSubmit={handleSubmit} className="px-4 sm:px-10">
-        <h1 className="text-2xl font-bold text-black my-4">
+      <form onSubmit={handleSubmit} className="px-5 sm:px-10 mt-8">
+        <h1 className="text-3xl font-bold text-center mb-8">
           {isEditing ? "Edit Order" : "New Order"}
         </h1>
-        {/* Patient Name */}
-        <div className="my-6">
-          <label className="block text-sm font-bold text-black mb-1">
-            Patient Name
-          </label>
-          <input
-            name="patientName"
-            value={form.patientName}
-            onChange={handleChange}
-            type="text"
-            placeholder="Enter patient name"
-            className="w-full border-2 border-black rounded-2xl px-5 py-3 text-base font-bold text-black focus:border-green-600 focus:shadow-md outline-none transition-all"
-          />
+
+        {/* Patient Info */}
+        <div className="space-y-6 mb-8">
+          <div>
+            <label className="block text-sm font-bold mb-2">Patient Name</label>
+            <input
+              name="patientName"
+              value={form.patientName}
+              onChange={handleChange}
+              type="text"
+              placeholder="Enter patient name"
+              className="w-full border-2 border-black rounded-2xl px-5 py-4 text-base font-bold focus:border-green-600 outline-none"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-bold mb-2">
+              WhatsApp Number
+            </label>
+            <input
+              name="whatsappNumber"
+              value={form.whatsappNumber}
+              onChange={handleChange}
+              type="tel"
+              placeholder="Enter WhatsApp number"
+              className="w-full border-2 border-black rounded-2xl px-5 py-4 text-base font-bold focus:border-green-600 outline-none"
+              required
+            />
+          </div>
         </div>
 
-        {/* WhatsApp Number */}
-        <div className="my-6">
-          <label className="block text-sm font-bold text-black mb-1">
-            WhatsApp Number
-          </label>
-          <input
-            name="whatsappNumber"
-            value={form.whatsappNumber}
-            onChange={handleChange}
-            type="tel"
-            inputMode="numeric"
-            pattern="[0-9+\- ]*"
-            placeholder="Enter WhatsApp number"
-            className="w-full border-2 border-black rounded-2xl px-5 py-3 text-base font-bold text-black focus:border-green-600 focus:shadow-md outline-none transition-all"
-          />
-        </div>
-
-        {/* Frame Detail */}
-        <div className="my-6">
-          <label className="block text-sm font-bold text-black mb-1">
-            Frame Detail
-          </label>
-          <input
-            name="frameDetail"
-            value={form.frameDetail}
-            onChange={handleChange}
-            type="text"
-            placeholder="Frame Detail"
-            className="w-full border-2 border-black rounded-2xl px-5 py-3 text-base font-bold text-black focus:border-green-600 focus:shadow-md outline-none transition-all"
-          />
-        </div>
-
-        {/* Lens Type */}
-        <div className="my-6">
-          <label className="block text-sm font-bold text-black mb-1">
-            Lens Type
-          </label>
-          <input
-            name="lensType"
-            value={form.lensType}
-            onChange={handleChange}
-            type="text"
-            placeholder="Lens Type"
-            className="w-full border-2 border-black rounded-2xl px-5 py-3 text-base font-bold text-black focus:border-green-600 focus:shadow-md outline-none transition-all"
-          />
+        {/* Frame & Lens */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+          <div>
+            <label className="block text-sm font-bold mb-2">Frame Detail</label>
+            <input
+              name="frameDetail"
+              value={form.frameDetail}
+              onChange={handleChange}
+              type="text"
+              placeholder="Frame details"
+              className="w-full border-2 border-black rounded-2xl px-5 py-4 text-base font-bold focus:border-green-600 outline-none"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-bold mb-2">Lens Type</label>
+            <input
+              name="lensType"
+              value={form.lensType}
+              onChange={handleChange}
+              type="text"
+              placeholder="Lens type"
+              className="w-full border-2 border-black rounded-2xl px-5 py-4 text-base font-bold focus:border-green-600 outline-none"
+            />
+          </div>
         </div>
 
         {/* Amounts */}
-        <div className="flex flex-col md:flex-row gap-4">
-          <div className="flex-1 my-6">
-            <label className="block text-sm font-bold text-black mb-1">
-              Total Amount
-            </label>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <div>
+            <label className="block text-sm font-bold mb-2">Total Amount</label>
             <input
               name="totalAmount"
               value={form.totalAmount}
               onChange={handleChange}
               type="number"
               step="0.01"
-              min="0"
-              placeholder="Total Amount"
-              className="w-full border-2 border-black rounded-2xl px-5 py-3 text-base font-bold text-black focus:border-green-600 focus:shadow-md outline-none transition-all"
+              placeholder="0.00"
+              className="w-full border-2 border-black rounded-2xl px-5 py-4 text-base font-bold focus:border-green-600 outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:hidden [&::-webkit-inner-spin-button]:hidden"
             />
           </div>
-
-          <div className="flex-1 my-6">
-            <label className="text-sm font-bold text-black mb-1">Advance</label>
+          <div>
+            <label className="block text-sm font-bold mb-2">Advance</label>
             <input
               name="advance"
               value={form.advance}
               onChange={handleChange}
               type="number"
               step="0.01"
-              min="0"
-              placeholder="Advance"
-              className="w-full border-2 border-black rounded-2xl px-5 py-3 text-base font-bold text-black focus:border-green-600 focus:shadow-md outline-none transition-all"
+              placeholder="0.00"
+              className="w-full border-2 border-black rounded-2xl px-5 py-4 text-base font-bold focus:border-green-600 outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:hidden [&::-webkit-inner-spin-button]:hidden"
             />
           </div>
-
-          <div className="flex-1 my-6">
-            <label className="block text-sm font-bold text-black mb-1">
-              Balance
-            </label>
+          <div>
+            <label className="block text-sm font-bold mb-2">Balance</label>
             <input
-              name="balance"
               value={(
                 (parseFloat(form.totalAmount) || 0) -
                 (parseFloat(form.advance) || 0)
               ).toFixed(2)}
               readOnly
-              className="w-full border-2 border-gray-300 rounded-2xl px-5 py-3 text-base font-bold text-gray-600 bg-gray-100 cursor-not-allowed outline-none transition-all"
+              className="w-full border-2 border-gray-400 rounded-2xl px-5 py-4 text-base font-bold bg-gray-100 cursor-not-allowed"
             />
           </div>
         </div>
 
-        {/* Delivery Date */}
-        <div className="my-6">
-          <label className="block text-sm font-bold text-black mb-1">
-            Delivery Date
-          </label>
-          <input
-            name="deliveryDate"
-            value={form.deliveryDate}
-            onChange={handleChange}
-            type="date"
-            className="w-full border-2 border-black rounded-2xl px-5 py-3 text-base font-bold text-black focus:border-green-600 focus:shadow-md outline-none transition-all"
-          />
+        {/* Delivery Date & Note */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+          <div>
+            <label className="block text-sm font-bold mb-2">
+              Delivery Date
+            </label>
+            <input
+              name="deliveryDate"
+              value={form.deliveryDate}
+              onChange={handleChange}
+              type="date"
+              className="w-full border-2 border-black rounded-2xl px-5 py-4 text-base font-bold focus:border-green-600 outline-none"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-bold mb-2">Special Note</label>
+            <textarea
+              name="specialNote"
+              value={form.specialNote}
+              onChange={handleChange}
+              rows={6} // Slightly taller to fit pre-filled text comfortably
+              placeholder="Any special instructions..."
+              className="w-full border-2 border-black rounded-2xl px-5 py-4 text-base font-bold focus:border-green-600 outline-none resize-none"
+            />
+          </div>
         </div>
 
-        {/* Special Note */}
-        <div className="my-6">
-          <label className="block text-sm font-bold text-black mb-1">
-            Special Note
-          </label>
-          <textarea
-            name="specialNote"
-            value={form.specialNote}
-            onChange={handleChange}
-            placeholder="Add any special instructions or notes for this order"
-            rows={3}
-            className="w-full border-2 border-black rounded-2xl px-5 py-3 text-base font-bold text-black focus:border-green-600 focus:shadow-md outline-none transition-all resize-none"
-          />
-        </div>
-
-        {/* Right & Left Eye */}
-        <div className="flex flex-col md:flex-row gap-6">
-          {/* Right Eye */}
-          <div className="bg-white rounded-2xl shadow-md border border-gray-100 md:w-1/2 p-4">
-            <div className="bg-green-600 text-white text-center font-semibold py-2 rounded-t-lg mb-4">
+        {/* Eyes */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-10 mb-10">
+          <div className="bg-white border border-gray-200 rounded-2xl shadow-lg p-6">
+            <h2 className="text-xl font-bold text-white bg-green-600 text-center py-3 rounded-t-2xl -mx-6 -mt-6 mb-6">
               Right Eye
-            </div>
-            <div className="flex flex-col gap-4">
+            </h2>
+            <div className="space-y-7">
               <div>
-                <label className="block text-sm font-semibold mb-1">Sph</label>
+                <label className="block text-sm font-semibold mb-2">Sph</label>
                 <CustomDropdown
                   options={sphOptions}
                   value={form.rightSph}
                   onChange={handleChange}
                   name="rightSph"
-                  isScrollable={true}
+                  placeholder="Select Sph"
                 />
               </div>
               <div>
-                <label className="block text-sm font-semibold mb-1">Cyl</label>
+                <label className="block text-sm font-semibold mb-2">Cyl</label>
                 <CustomDropdown
                   options={cylOptions}
                   value={form.rightCyl}
                   onChange={handleChange}
                   name="rightCyl"
-                  isScrollable={true}
+                  placeholder="Select Cyl"
                 />
               </div>
               <div>
-                <label className="block text-sm font-semibold mb-1">Axis</label>
+                <label className="block text-sm font-semibold mb-2">Axis</label>
                 <input
                   name="rightAxis"
+                  value={form.rightAxis}
+                  onChange={handleChange}
                   type="text"
                   inputMode="numeric"
                   pattern="[0-9]*"
-                  value={form.rightAxis}
-                  onChange={handleChange}
-                  placeholder="1 to 180"
-                  className="w-full border border-gray-300 rounded-lg p-2"
+                  placeholder="1 - 180"
+                  className="w-full border border-gray-300 rounded-lg px-5 py-3 focus:border-green-600 outline-none"
                 />
               </div>
             </div>
           </div>
 
-          {/* Left Eye */}
-          <div className="bg-white rounded-2xl shadow-md border border-gray-100 md:w-1/2 p-4">
-            <div className="bg-green-600 text-white text-center font-semibold py-2 rounded-t-lg mb-4">
+          <div className="bg-white border border-gray-200 rounded-2xl shadow-lg p-6">
+            <h2 className="text-xl font-bold text-white bg-green-600 text-center py-3 rounded-t-2xl -mx-6 -mt-6 mb-6">
               Left Eye
-            </div>
-            <div className="flex flex-col gap-4">
+            </h2>
+            <div className="space-y-7">
               <div>
-                <label className="block text-sm font-semibold mb-1">Sph</label>
+                <label className="block text-sm font-semibold mb-2">Sph</label>
                 <CustomDropdown
                   options={sphOptions}
                   value={form.leftSph}
                   onChange={handleChange}
                   name="leftSph"
-                  isScrollable={true}
+                  placeholder="Select Sph"
                 />
               </div>
               <div>
-                <label className="block text-sm font-semibold mb-1">Cyl</label>
+                <label className="block text-sm font-semibold mb-2">Cyl</label>
                 <CustomDropdown
                   options={cylOptions}
                   value={form.leftCyl}
                   onChange={handleChange}
                   name="leftCyl"
-                  isScrollable={true}
+                  placeholder="Select Cyl"
                 />
               </div>
               <div>
-                <label className="block text-sm font-semibold mb-1">Axis</label>
+                <label className="block text-sm font-semibold mb-2">Axis</label>
                 <input
                   name="leftAxis"
+                  value={form.leftAxis}
+                  onChange={handleChange}
                   type="text"
                   inputMode="numeric"
                   pattern="[0-9]*"
-                  value={form.leftAxis}
-                  onChange={handleChange}
-                  placeholder="1 to 180"
-                  className="w-full border border-gray-300 rounded-lg p-2"
+                  placeholder="1 - 180"
+                  className="w-full border border-gray-300 rounded-lg px-5 py-3 focus:border-green-600 outline-none"
                 />
               </div>
             </div>
           </div>
         </div>
 
-        {/* ADD Input */}
-        <div className="my-6">
-          <label className="block text-sm font-bold text-black mb-1">ADD</label>
+        {/* ADD */}
+        <div className="mb-12">
+          <label className="block text-sm font-bold mb-2">ADD</label>
           <CustomDropdown
             options={addOptions}
             value={form.addInput}
             onChange={handleChange}
             name="addInput"
-            isScrollable={true}
+            placeholder="Select ADD"
           />
         </div>
 
-        <div className="flex justify-center my-10">
+        {/* Submit */}
+        <div className="text-center">
           <button
             type="submit"
             disabled={loading}
-            className="bg-green-600 text-white font-bold px-10 py-3 rounded-2xl hover:bg-green-700 transition-all disabled:opacity-50"
+            className="bg-green-600 hover:bg-green-700 text-white font-bold text-lg px-16 py-4 rounded-2xl shadow-lg transition-all disabled:opacity-60"
           >
-            {loading ? "Submitting..." : "Submit Order"}
+            {loading
+              ? "Saving..."
+              : isEditing
+              ? "Update Order"
+              : "Create Order"}
           </button>
         </div>
       </form>

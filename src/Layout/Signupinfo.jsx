@@ -1,10 +1,11 @@
-import { FaArrowLeft } from "react-icons/fa6";
+import { FaArrowLeft, FaGoogle } from "react-icons/fa";
 import { Link, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { RiUserLine } from "react-icons/ri";
 import { CiMail } from "react-icons/ci";
 import { GoLock } from "react-icons/go";
 import { FcGoogle } from "react-icons/fc";
+import { FaEye, FaEyeSlash } from "react-icons/fa"; // Added eye icons
 import { post } from "../utils/api";
 import { useToast } from "../components/ToastProvider";
 
@@ -19,6 +20,9 @@ export default function Signupinfo() {
     confirmPassword: "",
     remember: false,
   });
+
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const [loading, setLoading] = useState(false);
 
@@ -89,7 +93,7 @@ export default function Signupinfo() {
       className="flex flex-col md:flex-row min-h-screen bg-white"
       style={{ fontFamily: "'Inter', sans-serif" }}
     >
-      {/* LEFT GREEN SECTION — SAME AS LOGIN */}
+      {/* LEFT GREEN SECTION */}
       <div
         className="w-full md:w-1/2 flex flex-col justify-center items-center px-8 sm:px-10 pb-20 md:pb-[120px] text-white relative"
         style={{
@@ -175,14 +179,21 @@ export default function Signupinfo() {
               size={22}
             />
             <input
-              type="password"
+              type={showPassword ? "text" : "password"}
               name="password"
               required
               value={formData.password}
               onChange={handleChange}
               placeholder="Enter your password"
-              className="w-full p-4 pl-10 border-2 rounded-xl border-[#e5e7eb] hover:border-[#169D53] outline-none transition-all duration-300"
+              className="w-full p-4 pl-10 pr-12 border-2 rounded-xl border-[#e5e7eb] hover:border-[#169D53] outline-none transition-all duration-300"
             />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-3 top-4 text-[#6B7C6B] hover:text-[#374151] transition"
+            >
+              {showPassword ? <FaEyeSlash size={20} /> : <FaEye size={20} />}
+            </button>
           </div>
 
           {/* CONFIRM PASSWORD */}
@@ -195,14 +206,21 @@ export default function Signupinfo() {
               size={22}
             />
             <input
-              type="password"
+              type={showConfirmPassword ? "text" : "password"}
               name="confirmPassword"
               required
               value={formData.confirmPassword}
               onChange={handleChange}
               placeholder="Confirm password"
-              className="w-full p-4 pl-10 border-2 rounded-xl border-[#e5e7eb] hover:border-[#169D53] outline-none transition-all duration-300"
+              className="w-full p-4 pl-10 pr-12 border-2 rounded-xl border-[#e5e7eb] hover:border-[#169D53] outline-none transition-all duration-300"
             />
+            <button
+              type="button"
+              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+              className="absolute right-3 top-4 text-[#6B7C6B] hover:text-[#374151] transition"
+            >
+              {showConfirmPassword ? <FaEyeSlash size={20} /> : <FaEye size={20} />}
+            </button>
           </div>
 
           {/* REMEMBER */}
