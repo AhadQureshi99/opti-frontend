@@ -2,8 +2,9 @@ import { FaArrowLeft } from "react-icons/fa";
 import { Link } from "react-router-dom";
 import SalesChart from "./SalesChart";
 import { FaRegCalendarAlt } from "react-icons/fa";
+import { FaRedo } from "react-icons/fa";
 import DonutCard from "./DonutCard";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { IoChevronDown } from "react-icons/io5";
 import { get } from "../utils/api";
 import { formatCurrency } from "../utils/currency";
@@ -11,25 +12,13 @@ import { useToast } from "../components/ToastProvider";
 
 export default function Salesrecord() {
   const toast = useToast();
-  const incomeData = [
-    { day: "Mon", value: 20 },
-    { day: "Tue", value: 40 },
-    { day: "Wed", value: 35 },
-    { day: "Thu", value: 60 },
-    { day: "Fri", value: 50 },
-    { day: "Sat", value: 90 },
-    { day: "Sun", value: 65 },
-  ];
 
-  const expenseData = [
-    { day: "Mon", value: 10 },
-    { day: "Tue", value: 30 },
-    { day: "Wed", value: 25 },
-    { day: "Thu", value: 55 },
-    { day: "Fri", value: 45 },
-    { day: "Sat", value: 80 },
-    { day: "Sun", value: 55 },
-  ];
+  const formatLocalDate = (d) => {
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
 
   const [open, setOpen] = useState(false);
   const [startDate, setStartDate] = useState("");
@@ -44,6 +33,21 @@ export default function Salesrecord() {
   const [ordersList, setOrdersList] = useState([]);
   const [expensesList, setExpensesList] = useState([]);
 
+  const finalCashInHand = useMemo(() => {
+    let received = 0;
+    let paid = 0;
+    (ordersList || []).forEach((o) => {
+      received += Number(o.advance) || 0;
+      if (o.status === "delivered") {
+        received += Number(o.balance) || 0;
+      }
+    });
+    (expensesList || []).forEach((e) => {
+      paid += Number(e.amount) || 0;
+    });
+    return formatCurrency(received - paid);
+  }, [ordersList, expensesList]);
+
   const quickRanges = [
     { label: "Today", handler: () => handleQuickRange(0) },
     { label: "Last 7 Days", handler: () => handleQuickRange(7) },
@@ -54,8 +58,8 @@ export default function Salesrecord() {
     const end = new Date();
     const start = new Date();
     start.setDate(end.getDate() - days + 1);
-    const s = start.toISOString().split("T")[0];
-    const e = end.toISOString().split("T")[0];
+    const s = formatLocalDate(start);
+    const e = formatLocalDate(end);
     setStartDate(s);
     setEndDate(e);
     setRangeText(
@@ -77,7 +81,6 @@ export default function Salesrecord() {
     setOpen(false);
   };
 
-  // helper to build day array from start to end (inclusive)
   const buildDayArray = (start, end) => {
     const s = new Date(start);
     const e = new Date(end);
@@ -89,71 +92,56 @@ export default function Salesrecord() {
     return days;
   };
 
-  // fetch orders and expenses for current range
   const fetchData = async (sParam, eParam) => {
     try {
       setLoading(true);
-      // default to last 30 days if no range selected
       let s = sParam || startDate;
       let e = eParam || endDate;
       if (!s || !e) {
         const end = new Date();
         const start = new Date();
         start.setDate(end.getDate() - 29);
-        s = start.toISOString().split("T")[0];
-        e = end.toISOString().split("T")[0];
+        s = formatLocalDate(start);
+        e = formatLocalDate(end);
         setStartDate(s);
         setEndDate(e);
         setRangeText(`${s} To ${e}`);
       }
 
-      // orders endpoint: fetch orders for authenticated user (admin will receive all)
-      const ordersRes = await get(`/api/orders?startDate=${s}&endDate=${e}`);
-      // expenses endpoint requires auth; we pass date filters
-      const expensesRes = await get(
-        `/api/expenses?startDate=${s}&endDate=${e}`
+      // Fetch all orders for sales record
+      const ordersRes = await get(
+        `/api/orders?startDate=${s}&endDate=${e}&t=${Date.now()}`
       );
+      let allOrders = Array.isArray(ordersRes) ? ordersRes : ordersRes || [];
 
-      const allOrders = Array.isArray(ordersRes)
-        ? ordersRes
-        : ordersRes.orders || ordersRes;
+      // Fetch expenses (assuming you have this endpoint)
+      const expensesRes = await get(
+        `/api/expenses?startDate=${s}&endDate=${e}&t=${Date.now()}`
+      );
       const allExpenses = Array.isArray(expensesRes)
         ? expensesRes
-        : expensesRes && Array.isArray(expensesRes.expenses)
-        ? expensesRes.expenses
-        : [];
+        : expensesRes?.expenses || [];
 
-      console.log(
-        "Fetched data - Orders:",
-        allOrders,
-        "Expenses:",
-        allExpenses
-      );
-      const sDate = new Date(s);
-      const eDate = new Date(e);
+      // Backend already filters by date range, but we'll double-check with proper date handling
+      const startDate = new Date(s);
+      startDate.setHours(0, 0, 0, 0);
+      const endDate = new Date(e);
+      endDate.setHours(23, 59, 59, 999);
 
       const ordersInRange = allOrders.filter((o) => {
-        // Only include completed orders as sales
-        if (o.status !== "completed") return false;
-
         const d = new Date(
-          o.createdAt ||
-            o.deliveryDate ||
-            o.updatedAt ||
-            o._id?.getTimestamp?.() ||
-            o.createdAt
+          o.createdAt || o.deliveryDate || o.updatedAt || o.createdAt
         );
-        return d >= sDate && d <= eDate;
+        return d >= startDate && d <= endDate;
       });
 
-      const expensesInRange = (allExpenses || []).filter((exp) => {
+      const expensesInRange = allExpenses.filter((exp) => {
         const d = new Date(
-          exp.date || exp.createdAt || exp._id?.getTimestamp?.()
+          exp.date || exp.createdAt || exp.updatedAt || exp.createdAt
         );
-        return d >= sDate && d <= eDate;
+        return d >= startDate && d <= endDate;
       });
 
-      // compute totals and daily sums
       const days = buildDayArray(s, e);
       const salesMap = {};
       const expenseMap = {};
@@ -176,7 +164,7 @@ export default function Salesrecord() {
       let exTotal = 0;
       expensesInRange.forEach((exp) => {
         const d = new Date(
-          exp.date || exp.createdAt || exp._id?.getTimestamp?.()
+          exp.date || exp.createdAt || exp.updatedAt || exp.createdAt
         );
         const key = d.toISOString().split("T")[0];
         const amt = Number(exp.amount) || 0;
@@ -204,16 +192,10 @@ export default function Salesrecord() {
       setCombinedSeries(combinedSeriesData);
       setSalesTotal(parseFloat(sTotal.toFixed(2)));
       setExpenseTotal(parseFloat(exTotal.toFixed(2)));
-      // set lists for transaction table
       setOrdersList(ordersInRange);
-      setExpensesList(expensesInRange || []);
+      setExpensesList(expensesInRange);
     } catch (err) {
-      console.error("Salesrecord fetch error", err);
-      console.log("Error details:", {
-        status: err?.status,
-        body: err?.body,
-        message: err?.message,
-      });
+      console.error("Salesrecord fetch error:", err);
       toast.addToast(err?.body?.message || "Failed to load sales data", {
         type: "error",
       });
@@ -223,24 +205,46 @@ export default function Salesrecord() {
   };
 
   useEffect(() => {
-    fetchData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (!startDate && !endDate) {
+      handleQuickRange(30);
+    } else {
+      fetchData();
+    }
   }, []);
 
+  useEffect(() => {
+    const handleFocus = () => {
+      if (startDate && endDate) {
+        fetchData();
+      }
+    };
+    const handleVisibilityChange = () => {
+      if (!document.hidden && startDate && endDate) {
+        fetchData();
+      }
+    };
+    window.addEventListener("focus", handleFocus);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      window.removeEventListener("focus", handleFocus);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [startDate, endDate]);
+
   return (
-    <div className="w-full bg-[white] h-full ">
+    <div className="w-full bg-[white] h-full">
       <div className="relative flex items-center justify-center px-5 sm:px-10 pt-10">
         <Link to="/home-page">
           <FaArrowLeft
             className="
-        absolute left-5 sm:left-18 top-14
-        w-7 h-6 
-        text-black 
-        cursor-pointer 
-        transition-all duration-300 
-        hover:text-green-600 
-        hover:-translate-x-1
-      "
+            absolute left-5 sm:left-18 top-14
+            w-7 h-6 
+            text-black 
+            cursor-pointer 
+            transition-all duration-300 
+            hover:text-green-600 
+            hover:-translate-x-1
+          "
           />
         </Link>
 
@@ -255,6 +259,7 @@ export default function Salesrecord() {
       <div className="">
         <h1 className="font-semibold text-center text-[20px]">Sale Records</h1>
       </div>
+
       <div className="flex justify-center gap-3 mt-5 px-5">
         <DonutCard
           label="Sales"
@@ -263,13 +268,13 @@ export default function Salesrecord() {
           color="#007A3F"
         />
         <DonutCard
-          label="Expense"
+          label="Expense (Paid Out)"
           value={expenseTotal}
           total={parseFloat((salesTotal + expenseTotal).toFixed(2)) || 1}
           color="#F97316"
         />
         <DonutCard
-          label="Net"
+          label="Cash in Hand"
           value={parseFloat((salesTotal - expenseTotal).toFixed(2))}
           total={parseFloat((salesTotal + expenseTotal).toFixed(2)) || 1}
           color="#007A3F"
@@ -279,11 +284,17 @@ export default function Salesrecord() {
       <div className="px-5 mt-8 md:mx-40 mb-4">
         <div className="flex sm:justify-between items-center gap-4">
           <h2 className="font-semibold text-sm">Chart Type: INCOME</h2>
-
-          <div className="relative inline-block sm:ml-auto">
+          <div className="relative inline-block sm:ml-auto flex items-center gap-2">
+            <button
+              onClick={() => fetchData()}
+              className="flex items-center justify-center w-10 h-10 border border-[#e9ecef] rounded-lg shadow-sm bg-[#f8f9fa] hover:shadow-md transition-all"
+              title="Refresh Data"
+            >
+              <FaRedo className="text-gray-600" />
+            </button>
             <button
               onClick={() => setOpen(!open)}
-              className="flex items-center md:gap-[12px] md:ml-12 border-1 border-[#e9ecef] rounded-lg px-[14px] py-[10px] shadow-sm bg-[#f8f9fa] hover:shadow-md transition-all"
+              className="flex items-center md:gap-[12px] border-1 border-[#e9ecef] rounded-lg px-[14px] py-[10px] shadow-sm bg-[#f8f9fa] hover:shadow-md transition-all"
             >
               <FaRegCalendarAlt className="text-gray-600" />
               <span className="text-[#666] font-medium">{rangeText}</span>
@@ -295,7 +306,6 @@ export default function Salesrecord() {
                 <h3 className="text-lg font-semibold mb-4">
                   Select Date Range
                 </h3>
-
                 <div className="flex flex-col gap-3 mb-4">
                   <label className="text-sm font-medium">Start Date:</label>
                   <input
@@ -304,7 +314,6 @@ export default function Salesrecord() {
                     onChange={(e) => setStartDate(e.target.value)}
                     className="border border-gray-300 rounded-md p-2 w-full"
                   />
-
                   <label className="text-sm font-medium">End Date:</label>
                   <input
                     type="date"
@@ -313,7 +322,6 @@ export default function Salesrecord() {
                     className="border border-gray-300 rounded-md p-2 w-full"
                   />
                 </div>
-
                 <div className="flex gap-2 mb-4">
                   {quickRanges.map((range) => (
                     <button
@@ -325,7 +333,6 @@ export default function Salesrecord() {
                     </button>
                   ))}
                 </div>
-
                 <div className="flex justify-end gap-2">
                   <button
                     onClick={cancelFilter}
@@ -353,83 +360,8 @@ export default function Salesrecord() {
           <SalesChart data={salesSeries} />
         )}
       </div>
+
       <div className="px-5 mb-8 md:mx-40">
-        <div className="flex sm:justify-between items-center gap-4 ">
-          <h2 className="font-semibold mb-2">Chart Type: EXPENSE</h2>
-          <div className="relative inline-block sm:ml-auto">
-            <button
-              onClick={() => setOpen(!open)}
-              className="flex items-center md:gap-[12px] md:ml-12 border-1 border-[#e9ecef] rounded-lg px-[14px] py-[10px] shadow-sm bg-[#f8f9fa] hover:shadow-md transition-all"
-            >
-              <FaRegCalendarAlt className="text-gray-600" />
-              <span className="text-[#666] font-medium">{rangeText}</span>
-              <IoChevronDown className="text-gray-600" />
-            </button>
-
-            {open && (
-              <div className="absolute right-0 z-50 mt-2 min-w-[250px] w-[350px] max-w-[400px] bg-white p-6 rounded-[15px] shadow-[0_10px_30px_rgba(0,0,0,0.3)]">
-                <h3 className="text-lg font-semibold mb-4">
-                  Select Date Range
-                </h3>
-
-                <div className="flex flex-col gap-3 mb-4">
-                  <label className="text-sm font-medium">Start Date:</label>
-                  <input
-                    type="date"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                    className="border border-gray-300 rounded-md p-2 w-full"
-                  />
-
-                  <label className="text-sm font-medium">End Date:</label>
-                  <input
-                    type="date"
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                    className="border border-gray-300 rounded-md p-2 w-full"
-                  />
-                </div>
-
-                <div className="flex gap-2 mb-4">
-                  {quickRanges.map((range) => (
-                    <button
-                      key={range.label}
-                      onClick={range.handler}
-                      className="bg-gray-100 text-gray-800 px-3 py-1 rounded-md hover:bg-gray-200 transition-all text-sm"
-                    >
-                      {range.label}
-                    </button>
-                  ))}
-                </div>
-
-                <div className="flex justify-end gap-2">
-                  <button
-                    onClick={cancelFilter}
-                    className="px-4 py-2 rounded-md border border-gray-300 hover:bg-gray-100 transition-all"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={applyFilter}
-                    className="px-4 py-2 rounded-md bg-[#169D53] text-white hover:bg-green-600 transition-all"
-                  >
-                    Apply Filter
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-      <div className="flex justify-center items-center ">
-        {loading ? (
-          <div className="text-center">Loading...</div>
-        ) : (
-          <SalesChart data={expenseSeries} />
-        )}
-      </div>
-
-      <div className="px-5 mb-8 sm:mx-40  ">
         <div className="flex sm:justify-between items-center gap-4">
           <h2 className="font-semibold mb-2">Chart Type: EXPENSE</h2>
           <div className="relative inline-block sm:ml-auto">
@@ -447,7 +379,6 @@ export default function Salesrecord() {
                 <h3 className="text-lg font-semibold mb-4">
                   Select Date Range
                 </h3>
-
                 <div className="flex flex-col gap-3 mb-4">
                   <label className="text-sm font-medium">Start Date:</label>
                   <input
@@ -456,7 +387,6 @@ export default function Salesrecord() {
                     onChange={(e) => setStartDate(e.target.value)}
                     className="border border-gray-300 rounded-md p-2 w-full"
                   />
-
                   <label className="text-sm font-medium">End Date:</label>
                   <input
                     type="date"
@@ -465,7 +395,6 @@ export default function Salesrecord() {
                     className="border border-gray-300 rounded-md p-2 w-full"
                   />
                 </div>
-
                 <div className="flex gap-2 mb-4">
                   {quickRanges.map((range) => (
                     <button
@@ -477,7 +406,6 @@ export default function Salesrecord() {
                     </button>
                   ))}
                 </div>
-
                 <div className="flex justify-end gap-2">
                   <button
                     onClick={cancelFilter}
@@ -497,37 +425,121 @@ export default function Salesrecord() {
           </div>
         </div>
       </div>
-      <div className="flex justify-center items-center ">
+
+      <div className="flex justify-center items-center mb-8">
+        {loading ? (
+          <div className="text-center">Loading...</div>
+        ) : (
+          <SalesChart data={expenseSeries} />
+        )}
+      </div>
+
+      <div className="px-5 mb-8 md:mx-40">
+        <div className="flex sm:justify-between items-center gap-4">
+          <h2 className="font-semibold mb-2">Chart Type: NET</h2>
+          <div className="relative inline-block sm:ml-auto">
+            <button
+              onClick={() => setOpen(!open)}
+              className="flex items-center md:gap-[12px] md:ml-12 border-1 border-[#e9ecef] rounded-lg px-[14px] py-[10px] shadow-sm bg-[#f8f9fa] hover:shadow-md transition-all"
+            >
+              <FaRegCalendarAlt className="text-gray-600" />
+              <span className="text-[#666] font-medium">{rangeText}</span>
+              <IoChevronDown className="text-gray-600" />
+            </button>
+
+            {open && (
+              <div className="absolute right-0 z-50 mt-2 min-w-[250px] w-[350px] max-w-[400px] bg-white p-6 rounded-[15px] shadow-[0_10px_30px_rgba(0,0,0,0.3)]">
+                <h3 className="text-lg font-semibold mb-4">
+                  Select Date Range
+                </h3>
+                <div className="flex flex-col gap-3 mb-4">
+                  <label className="text-sm font-medium">Start Date:</label>
+                  <input
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    className="border border-gray-300 rounded-md p-2 w-full"
+                  />
+                  <label className="text-sm font-medium">End Date:</label>
+                  <input
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    className="border border-gray-300 rounded-md p-2 w-full"
+                  />
+                </div>
+                <div className="flex gap-2 mb-4">
+                  {quickRanges.map((range) => (
+                    <button
+                      key={range.label}
+                      onClick={range.handler}
+                      className="bg-gray-100 text-gray-800 px-3 py-1 rounded-md hover:bg-gray-200 transition-all text-sm"
+                    >
+                      {range.label}
+                    </button>
+                  ))}
+                </div>
+                <div className="flex justify-end gap-2">
+                  <button
+                    onClick={cancelFilter}
+                    className="px-4 py-2 rounded-md border border-gray-300 hover:bg-gray-100 transition-all"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={applyFilter}
+                    className="px-4 py-2 rounded-md bg-[#169D53] text-white hover:bg-green-600 transition-all"
+                  >
+                    Apply Filter
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="flex justify-center items-center mb-8">
         {loading ? (
           <div className="text-center">Loading...</div>
         ) : (
           <SalesChart data={combinedSeries} />
         )}
       </div>
-      {/* Transactions table showing sales and expenses in the selected range */}
-      <div className="px-5 mb-12 md:mx-40">
+
+      {/* Transactions table */}
+      <div className="px-5 mb-12">
         <h2 className="font-semibold mb-3">Transactions</h2>
-        <div className="overflow-x-auto bg-white rounded shadow">
-          <table className="min-w-full divide-y">
+        <div className="bg-white rounded shadow">
+          <table className="min-w-full border-collapse border border-gray-300">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">
+                <th className="px-4 py-2 text-left text-sm font-medium text-gray-700 border border-gray-300">
                   Date
                 </th>
-                <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">
+                <th className="px-4 py-2 text-left text-sm font-medium text-gray-700 border border-gray-300">
                   Type
                 </th>
-                <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">
+                <th className="px-4 py-2 text-left text-sm font-medium text-gray-700 border border-gray-300">
                   Reference
                 </th>
-                <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">
-                  Description
-                </th>
-                <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">
+                <th className="px-4 py-2 text-left text-sm font-medium text-gray-700 border border-gray-300">
                   Category
                 </th>
-                <th className="px-4 py-2 text-right text-sm font-medium text-gray-700">
-                  Amount
+                <th className="px-4 py-2 text-right text-sm font-medium text-gray-700 border border-gray-300">
+                  Total Amount
+                </th>
+                <th className="px-4 py-2 text-left text-sm font-medium text-gray-700 border border-gray-300">
+                  Description
+                </th>
+                <th className="px-4 py-2 text-right text-sm font-medium text-gray-700 border border-gray-300">
+                  Cash Received
+                </th>
+                <th className="px-4 py-2 text-right text-sm font-medium text-gray-700 border border-gray-300">
+                  Cash Paid Out
+                </th>
+                <th className="px-4 py-2 text-right text-sm font-medium text-gray-700 border border-gray-300">
+                  Cash in Hand
                 </th>
               </tr>
             </thead>
@@ -543,19 +555,41 @@ export default function Salesrecord() {
                         o.createdAt
                     ),
                     type: "Sale",
-                    ref: o._id || o.trackingId,
-                    description:
-                      o.frameDetails || o.lensType || o.patientName || "Sale",
-                    amount: Number(o.totalAmount) || 0,
+                    ref: o.trackingId || o._id,
+                    description: "advance",
+                    category: "-",
+                    advance: Number(o.advance) || 0,
+                    totalAmount: Number(o.totalAmount) || 0,
+                    balance: Number(o.balance) || 0,
+                    cashReceived: Number(o.advance) || 0,
+                    delivered: o.status === "delivered",
                   })),
+                  ...(ordersList || [])
+                    .filter((o) => o.status === "delivered")
+                    .map((o) => ({
+                      id: `delivery-${o._id}`,
+                      date: new Date(
+                        o.updatedAt || o.deliveryDate || o.createdAt
+                      ),
+                      type: "Delivery",
+                      ref: o.trackingId || o._id,
+                      description: "balance",
+                      category: "-",
+                      totalAmount: 0,
+                      cashReceived: Number(o.balance) || 0,
+                    })),
                   ...(expensesList || []).map((e) => ({
                     id: e._id,
-                    date: new Date(e.date || e.createdAt),
+                    date: new Date(
+                      e.date || e.createdAt || e.updatedAt || e.createdAt
+                    ),
                     type: "Expense",
                     ref: e._id,
                     description: e.description || "N/A",
                     category: e.category || "N/A",
                     amount: Number(e.amount) || 0,
+                    cashPaid: Number(e.cashPaid) || 0,
+                    cashInHand: Number(e.cashInHand) || 0,
                   })),
                 ].sort((a, b) => b.date - a.date);
 
@@ -563,8 +597,8 @@ export default function Salesrecord() {
                   return (
                     <tr>
                       <td
-                        colSpan={5}
-                        className="px-4 py-6 text-center text-sm text-gray-500"
+                        colSpan={9}
+                        className="px-4 py-6 text-center text-sm text-gray-500 border border-gray-300"
                       >
                         No transactions in this range.
                       </td>
@@ -572,36 +606,110 @@ export default function Salesrecord() {
                   );
                 }
 
-                return combined.map((r) => (
-                  <tr key={`${r.type}-${r.id}`}>
-                    <td className="px-4 py-3 text-sm text-gray-700">
-                      {r.date.toLocaleString()}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-700">
-                      {r.type}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-700">{r.ref}</td>
-                    <td className="px-4 py-3 text-sm text-gray-700">
-                      {r.description}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-700">
-                      {r.type === "Expense" ? r.category : "-"}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-right font-semibold">
-                      <span
-                        className={
-                          r.type === "Expense"
-                            ? "text-red-600"
-                            : "text-green-600"
-                        }
-                      >
-                        {r.type === "Expense" ? "-" : ""}
-                        {formatCurrency(r.amount)}
-                      </span>
-                    </td>
-                  </tr>
-                ));
+                // Calculate cash in hand for each row (now using final)
+                return combined.map((r) => {
+                  let cashPaidOut = "-";
+                  let cashInHand = finalCashInHand;
+                  let cashReceived = "-";
+                  if (r.type === "Sale" || r.type === "Delivery") {
+                    cashPaidOut = "-";
+                    cashReceived = formatCurrency(r.cashReceived);
+                  } else if (r.type === "Expense") {
+                    cashPaidOut = formatCurrency(r.amount);
+                    cashReceived = "-";
+                  }
+                  return (
+                    <tr key={`${r.type}-${r.id}`}>
+                      <td className="px-4 py-3 text-sm text-gray-700 border border-gray-300">
+                        {r.date.toLocaleDateString()}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-700 border border-gray-300">
+                        {r.type}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-700 border border-gray-300">
+                        {r.ref}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-700 border border-gray-300">
+                        {r.category}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-right font-semibold border border-gray-300">
+                        <span
+                          className={
+                            r.type === "Sale" || r.type === "Delivery"
+                              ? "text-green-600"
+                              : "text-red-600"
+                          }
+                        >
+                          {r.type === "Sale"
+                            ? formatCurrency(r.totalAmount)
+                            : r.type === "Delivery"
+                            ? "-"
+                            : `-${formatCurrency(r.amount)}`}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-700 border border-gray-300">
+                        {r.description}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-right font-semibold border border-gray-300">
+                        <span className="text-green-600">{cashReceived}</span>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-right font-semibold border border-gray-300">
+                        <span
+                          className={
+                            r.type === "Expense"
+                              ? "text-orange-600"
+                              : "text-green-600"
+                          }
+                        >
+                          {cashPaidOut}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-right font-semibold border border-gray-300">
+                        <span className="text-blue-600">{cashInHand}</span>
+                      </td>
+                    </tr>
+                  );
+                });
               })()}
+              {/* Summary row for total sales */}
+              <tr className="bg-gray-100 font-bold">
+                <td
+                  colSpan={4}
+                  className="px-4 py-3 text-right text-sm text-gray-700 border border-gray-300"
+                >
+                  Total Sales:
+                </td>
+                <td className="px-4 py-3 text-sm text-right text-green-700 border border-gray-300">
+                  {formatCurrency(salesTotal)}
+                </td>
+                <td colSpan={4} className="border border-gray-300"></td>
+              </tr>
+              {/* Summary row for total expenses */}
+              <tr className="bg-gray-100 font-bold">
+                <td
+                  colSpan={4}
+                  className="px-4 py-3 text-right text-sm text-gray-700 border border-gray-300"
+                >
+                  Total Expenses:
+                </td>
+                <td className="px-4 py-3 text-sm text-right text-red-700 border border-gray-300">
+                  {formatCurrency(expenseTotal)}
+                </td>
+                <td colSpan={4} className="border border-gray-300"></td>
+              </tr>
+              {/* Summary row for net amount */}
+              <tr className="bg-gray-100 font-bold">
+                <td
+                  colSpan={4}
+                  className="px-4 py-3 text-right text-sm text-gray-700 border border-gray-300"
+                >
+                  Current Cash:
+                </td>
+                <td className="px-4 py-3 text-sm text-right text-blue-700 border border-gray-300">
+                  {finalCashInHand}
+                </td>
+                <td colSpan={4} className="border border-gray-300"></td>
+              </tr>
             </tbody>
           </table>
         </div>

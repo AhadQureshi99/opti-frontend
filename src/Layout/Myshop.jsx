@@ -1,28 +1,245 @@
-import { FaArrowLeft } from "react-icons/fa";
+import { FaArrowLeft, FaEye, FaEyeSlash } from "react-icons/fa";
+import { CiCalendar } from "react-icons/ci";
+import { LuPhone } from "react-icons/lu";
+import { MdOutlineEmail } from "react-icons/md";
+import { RiDeleteBinLine } from "react-icons/ri";
+import { MdEdit } from "react-icons/md";
 import { Link } from "react-router-dom";
 import { useEffect, useState, useRef } from "react";
-import { get, put } from "../utils/api";
+import { get, put, post, del } from "../utils/api";
 import { useToast } from "../components/ToastProvider";
+import CustomDropdown from "../components/CustomDropdown";
+
+const countries = [
+  { code: "+1", name: "USA", flag: "🇺🇸" },
+  { code: "+91", name: "India", flag: "🇮🇳" },
+  { code: "+44", name: "UK", flag: "🇬🇧" },
+  { code: "+61", name: "Australia", flag: "🇦🇺" },
+  { code: "+81", name: "Japan", flag: "🇯🇵" },
+  { code: "+86", name: "China", flag: "🇨🇳" },
+  { code: "+49", name: "Germany", flag: "🇩🇪" },
+  { code: "+33", name: "France", flag: "🇫🇷" },
+  { code: "+39", name: "Italy", flag: "🇮🇹" },
+  { code: "+7", name: "Russia", flag: "🇷🇺" },
+  { code: "+55", name: "Brazil", flag: "🇧🇷" },
+  { code: "+27", name: "South Africa", flag: "🇿🇦" },
+  { code: "+82", name: "South Korea", flag: "🇰🇷" },
+  { code: "+65", name: "Singapore", flag: "🇸🇬" },
+  { code: "+60", name: "Malaysia", flag: "🇲🇾" },
+  { code: "+66", name: "Thailand", flag: "🇹🇭" },
+  { code: "+84", name: "Vietnam", flag: "🇻🇳" },
+  { code: "+63", name: "Philippines", flag: "🇵🇭" },
+  { code: "+62", name: "Indonesia", flag: "🇮🇩" },
+  { code: "+20", name: "Egypt", flag: "🇪🇬" },
+  { code: "+971", name: "UAE", flag: "🇦🇪" },
+  { code: "+966", name: "Saudi Arabia", flag: "🇸🇦" },
+  { code: "+90", name: "Turkey", flag: "🇹🇷" },
+  { code: "+48", name: "Poland", flag: "🇵🇱" },
+  { code: "+31", name: "Netherlands", flag: "🇳🇱" },
+  { code: "+46", name: "Sweden", flag: "🇸🇪" },
+  { code: "+47", name: "Norway", flag: "🇳🇴" },
+  { code: "+45", name: "Denmark", flag: "🇩🇰" },
+  { code: "+358", name: "Finland", flag: "🇫🇮" },
+  { code: "+41", name: "Switzerland", flag: "🇨🇭" },
+  { code: "+43", name: "Austria", flag: "🇦🇹" },
+  { code: "+32", name: "Belgium", flag: "🇧🇪" },
+  { code: "+34", name: "Spain", flag: "🇪🇸" },
+  { code: "+351", name: "Portugal", flag: "🇵🇹" },
+  { code: "+30", name: "Greece", flag: "🇬🇷" },
+  { code: "+36", name: "Hungary", flag: "🇭🇺" },
+  { code: "+420", name: "Czech Republic", flag: "🇨🇿" },
+  { code: "+40", name: "Romania", flag: "🇷🇴" },
+  { code: "+380", name: "Ukraine", flag: "🇺🇦" },
+  { code: "+7", name: "Kazakhstan", flag: "🇰🇿" },
+  { code: "+994", name: "Azerbaijan", flag: "🇦🇿" },
+  { code: "+374", name: "Armenia", flag: "🇦🇲" },
+  { code: "+995", name: "Georgia", flag: "🇬🇪" },
+  { code: "+98", name: "Iran", flag: "🇮🇷" },
+  { code: "+964", name: "Iraq", flag: "🇮🇶" },
+  { code: "+962", name: "Jordan", flag: "🇯🇴" },
+  { code: "+961", name: "Lebanon", flag: "🇱🇧" },
+  { code: "+970", name: "Palestine", flag: "🇵🇸" },
+  { code: "+972", name: "Israel", flag: "🇮🇱" },
+  { code: "+968", name: "Oman", flag: "🇴🇲" },
+  { code: "+974", name: "Qatar", flag: "🇶🇦" },
+  { code: "+965", name: "Kuwait", flag: "🇰🇼" },
+  { code: "+973", name: "Bahrain", flag: "🇧🇭" },
+  { code: "+92", name: "Pakistan", flag: "🇵🇰" },
+  { code: "+880", name: "Bangladesh", flag: "🇧🇩" },
+  { code: "+94", name: "Sri Lanka", flag: "🇱🇰" },
+  { code: "+95", name: "Myanmar", flag: "🇲🇲" },
+  { code: "+856", name: "Laos", flag: "🇱🇦" },
+  { code: "+855", name: "Cambodia", flag: "🇰🇭" },
+  { code: "+84", name: "Vietnam", flag: "🇻🇳" },
+  { code: "+856", name: "Laos", flag: "🇱🇦" },
+  { code: "+855", name: "Cambodia", flag: "🇰🇭" },
+  { code: "+670", name: "Timor-Leste", flag: "🇹🇱" },
+  { code: "+675", name: "Papua New Guinea", flag: "🇵🇬" },
+  { code: "+676", name: "Tonga", flag: "🇹🇴" },
+  { code: "+677", name: "Solomon Islands", flag: "🇸🇧" },
+  { code: "+678", name: "Vanuatu", flag: "🇻🇺" },
+  { code: "+679", name: "Fiji", flag: "🇫🇯" },
+  { code: "+680", name: "Palau", flag: "🇵🇼" },
+  { code: "+681", name: "Wallis and Futuna", flag: "🇼🇫" },
+  { code: "+682", name: "Cook Islands", flag: "🇨🇰" },
+  { code: "+683", name: "Niue", flag: "🇳🇺" },
+  { code: "+684", name: "American Samoa", flag: "🇦🇸" },
+  { code: "+685", name: "Samoa", flag: "🇼🇸" },
+  { code: "+686", name: "Kiribati", flag: "🇰🇮" },
+  { code: "+687", name: "New Caledonia", flag: "🇳🇨" },
+  { code: "+688", name: "Tuvalu", flag: "🇹🇻" },
+  { code: "+689", name: "French Polynesia", flag: "🇵🇫" },
+  { code: "+690", name: "Tokelau", flag: "🇹🇰" },
+  { code: "+691", name: "Micronesia", flag: "🇫🇲" },
+  { code: "+692", name: "Marshall Islands", flag: "🇲🇭" },
+  { code: "+850", name: "North Korea", flag: "🇰🇵" },
+  { code: "+852", name: "Hong Kong", flag: "🇭🇰" },
+  { code: "+853", name: "Macau", flag: "🇲🇴" },
+  { code: "+855", name: "Cambodia", flag: "🇰🇭" },
+  { code: "+856", name: "Laos", flag: "🇱🇦" },
+  { code: "+880", name: "Bangladesh", flag: "🇧🇩" },
+  { code: "+886", name: "Taiwan", flag: "🇹🇼" },
+  { code: "+960", name: "Maldives", flag: "🇲🇻" },
+  { code: "+961", name: "Lebanon", flag: "🇱🇧" },
+  { code: "+962", name: "Jordan", flag: "🇯🇴" },
+  { code: "+963", name: "Syria", flag: "🇸🇾" },
+  { code: "+964", name: "Iraq", flag: "🇮🇶" },
+  { code: "+965", name: "Kuwait", flag: "🇰🇼" },
+  { code: "+966", name: "Saudi Arabia", flag: "🇸🇦" },
+  { code: "+967", name: "Yemen", flag: "🇾🇪" },
+  { code: "+968", name: "Oman", flag: "🇴🇲" },
+  { code: "+970", name: "Palestine", flag: "🇵🇸" },
+  { code: "+971", name: "UAE", flag: "🇦🇪" },
+  { code: "+972", name: "Israel", flag: "🇮🇱" },
+  { code: "+973", name: "Bahrain", flag: "🇧🇭" },
+  { code: "+974", name: "Qatar", flag: "🇶🇦" },
+  { code: "+975", name: "Bhutan", flag: "🇧🇹" },
+  { code: "+976", name: "Mongolia", flag: "🇲🇳" },
+  { code: "+977", name: "Nepal", flag: "🇳🇵" },
+  { code: "+992", name: "Tajikistan", flag: "🇹🇯" },
+  { code: "+993", name: "Turkmenistan", flag: "🇹🇲" },
+  { code: "+994", name: "Azerbaijan", flag: "🇦🇿" },
+  { code: "+995", name: "Georgia", flag: "🇬🇪" },
+  { code: "+996", name: "Kyrgyzstan", flag: "🇰🇬" },
+  { code: "+998", name: "Uzbekistan", flag: "🇺🇿" },
+];
 
 export default function Myshop() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const toast = useToast();
-  const fileRef = useRef(null);
-
+  const [subLoading, setSubLoading] = useState(false);
+  const [subUsers, setSubUsers] = useState([]);
+  const [editingSubUser, setEditingSubUser] = useState(null);
+  const [showSubPassword, setShowSubPassword] = useState(false);
+  const [subUserForm, setSubUserForm] = useState({
+    subUsername: "",
+    email: "",
+    password: "",
+    phoneNumber: "",
+  });
   const [form, setForm] = useState({
     shopName: "",
     address: "",
     phoneNumber: "",
+    countryCode: "+91",
     username: "",
     password: "",
     currency: "INR - Indian Rupee (₹)",
     whatsappNumber: "",
+    whatsappCode: "+91",
     facebookId: "",
     instagramId: "",
     website: "",
   });
+  const toast = useToast();
+  const fileRef = useRef(null);
+
+  // Sub-user access check
+  const isSubUser = localStorage.getItem("isSubUser") === "true";
+  // Fetch sub-users on mount
+  useEffect(() => {
+    let mounted = true;
+    get("/api/user/sub-users")
+      .then((data) => {
+        if (!mounted) return;
+        setSubUsers(data.subUsers || []);
+      })
+      .catch(() => {});
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  // Sub-user handlers
+  async function handleAddSubUser(e) {
+    e.preventDefault && e.preventDefault();
+    setSubLoading(true);
+    try {
+      const body = { ...subUserForm };
+      const data = await post("/api/user/sub-users", body);
+      toast.addToast(data.message || "Sub-user added", { type: "success" });
+      setSubUsers((s) => [...s, data.subUser]);
+      setSubUserForm({
+        subUsername: "",
+        email: "",
+        password: "",
+        phoneNumber: "",
+      });
+    } catch (err) {
+      toast.addToast(err?.body?.message || "Add failed", { type: "error" });
+    } finally {
+      setSubLoading(false);
+    }
+  }
+
+  function handleEditSubUser(subUser) {
+    setEditingSubUser(subUser);
+    setSubUserForm({
+      subUsername: subUser.subUsername || "",
+      email: subUser.email || "",
+      password: "",
+      phoneNumber: subUser.phoneNumber || "",
+    });
+  }
+
+  async function handleUpdateSubUser(e) {
+    e.preventDefault && e.preventDefault();
+    if (!editingSubUser) return;
+    setSubLoading(true);
+    try {
+      const body = { ...subUserForm };
+      if (!body.password) delete body.password;
+      const data = await put(`/api/user/sub-users/${editingSubUser._id}`, body);
+      toast.addToast(data.message || "Sub-user updated", { type: "success" });
+      setSubUsers((s) =>
+        s.map((u) => (u._id === editingSubUser._id ? data.subUser : u))
+      );
+      setEditingSubUser(null);
+      setSubUserForm({
+        subUsername: "",
+        email: "",
+        password: "",
+        phoneNumber: "",
+      });
+    } catch (err) {
+      toast.addToast(err?.body?.message || "Update failed", { type: "error" });
+    } finally {
+      setSubLoading(false);
+    }
+  }
+
+  async function handleDeleteSubUser(id) {
+    if (!window.confirm("Are you sure you want to delete this sub-user?"))
+      return;
+    try {
+      await del(`/api/user/sub-users/${id}`);
+      toast.addToast("Sub-user deleted", { type: "success" });
+      setSubUsers((s) => s.filter((u) => u._id !== id));
+    } catch (err) {
+      toast.addToast(err?.body?.message || "Delete failed", { type: "error" });
+    }
+  }
 
   useEffect(() => {
     let mounted = true;
@@ -37,9 +254,11 @@ export default function Myshop() {
           shopName: u.shopName || u.shopname || "",
           address: u.address || "",
           phoneNumber: u.phoneNumber || u.phone || "",
+          countryCode: u.countryCode || "+91",
           username: u.username || u.email || "",
           currency: u.currency || f.currency,
           whatsappNumber: u.whatsappNumber || "",
+          whatsappCode: u.whatsappCode || "+91",
           facebookId: u.facebookId || "",
           instagramId: u.instagramId || "",
           website: u.website || "",
@@ -67,10 +286,12 @@ export default function Myshop() {
         shopName: form.shopName,
         address: form.address,
         phoneNumber: form.phoneNumber,
+        countryCode: form.countryCode,
         username: form.username,
         password: form.password || undefined,
         currency: form.currency,
         whatsappNumber: form.whatsappNumber,
+        whatsappCode: form.whatsappCode,
         facebookId: form.facebookId,
         instagramId: form.instagramId,
         website: form.website,
@@ -99,9 +320,11 @@ export default function Myshop() {
           shopName: u.shopName || u.shopname || "",
           address: u.address || "",
           phoneNumber: u.phoneNumber || u.phone || "",
+          countryCode: u.countryCode || "+91",
           username: u.username || u.email || "",
           currency: u.currency || f.currency,
           whatsappNumber: u.whatsappNumber || "",
+          whatsappCode: u.whatsappCode || "+91",
           facebookId: u.facebookId || "",
           instagramId: u.instagramId || "",
           website: u.website || "",
@@ -298,32 +521,69 @@ export default function Myshop() {
             Phone Number
           </label>
 
-          <input
-            name="phoneNumber"
-            value={form.phoneNumber}
-            onChange={handleChange}
-            type="tel"
-            placeholder="Enter phone number"
-            className="
-     w-[65%]
-      px-5 
-      py-6
-      border-2 
-      border-black
-      rounded-[25px]
-      text-base
-      font-bold
-      bg-white
-       text-black       
-    placeholder:text-gray-400
-      min-h-[60px]
-      transition-all
-      duration-300
-      focus:border-green-600
-      focus:shadow-md
-      outline-none
-    "
-          />
+          <div className="flex items-center w-[65%]">
+            <input
+              name="countryCode"
+              value={form.countryCode}
+              onChange={handleChange}
+              type="text"
+              placeholder="+91"
+              list="country-codes"
+              className="
+        px-3
+        py-6
+        border-2
+        border-black
+        rounded-l-[25px]
+        text-base
+        font-bold
+        bg-white
+        text-black
+        min-h-[60px]
+        transition-all
+        duration-300
+        focus:border-green-600
+        focus:shadow-md
+        outline-none
+        w-[30%]
+      "
+            />
+            <datalist id="country-codes">
+              {countries.map((country) => (
+                <option key={country.code} value={country.code}>
+                  {country.name} ({country.code})
+                </option>
+              ))}
+            </datalist>
+
+            <input
+              name="phoneNumber"
+              value={form.phoneNumber}
+              onChange={handleChange}
+              type="tel"
+              placeholder="Enter phone number"
+              className="
+        w-[70%]
+        px-5
+        py-6
+        border-2
+        border-l-0
+        border-black
+        rounded-r-[25px]
+        text-base
+        font-bold
+        bg-white
+        text-black
+        placeholder:text-gray-400
+        min-h-[60px]
+        transition-all
+        duration-300
+        focus:border-green-600
+        focus:shadow-md
+        outline-none
+      "
+            />
+          </div>
         </div>
 
         <div className="relative w-full flex flex-row justify-center my-10">
@@ -485,37 +745,39 @@ export default function Myshop() {
             Currency
           </label>
 
-          <CustomDropdown
-            options={[
-              "USD - US Dollar ($)",
-              "EUR - Euro (€)",
-              "GBP - British Pound (£)",
-              "PKR - Pakistani Rupee (₨)",
-              "INR - Indian Rupee (₹)",
-              "AED - Dirham (د.إ)",
-              "SAR - Saudi Riyal (﷼)",
-              "CAD - Canadian Dollar (C$)",
-              "AUD - Australian Dollar (A$)",
-              "JPY - Japanese Yen (¥)",
-              "CNY - Chinese Yuan (¥)",
-              "CHF - Swiss Franc (CHF)",
-              "SGD - Singapore Dollar (S$)",
-              "MYR - Malaysian Ringgit (RM)",
-              "BDT - Bangladeshi Taka (৳)",
-              "THB - Thai Baht (฿)",
-              "KRW - South Korean Won (₩)",
-              "ZAR - South African Rand (R)",
-              "TRY - Turkish Lira (₺)",
-              "BRL - Brazilian Real (R$)",
-              "MXN - Mexican Peso ($)",
-              "NZD - New Zealand Dollar (NZ$)",
-              "RUB - Russian Ruble (₽)",
-            ]}
-            value={form.currency}
-            onChange={handleChange}
-            name="currency"
-            placeholder="Select Currency"
-          />
+          <div className="w-[65%]">
+            <CustomDropdown
+              options={[
+                "USD - US Dollar ($)",
+                "EUR - Euro (€)",
+                "GBP - British Pound (£)",
+                "PKR - Pakistani Rupee (₨)",
+                "INR - Indian Rupee (₹)",
+                "AED - Dirham (د.إ)",
+                "SAR - Saudi Riyal (﷼)",
+                "CAD - Canadian Dollar (C$)",
+                "AUD - Australian Dollar (A$)",
+                "JPY - Japanese Yen (¥)",
+                "CNY - Chinese Yuan (¥)",
+                "CHF - Swiss Franc (CHF)",
+                "SGD - Singapore Dollar (S$)",
+                "MYR - Malaysian Ringgit (RM)",
+                "BDT - Bangladeshi Taka (৳)",
+                "THB - Thai Baht (฿)",
+                "KRW - South Korean Won (₩)",
+                "ZAR - South African Rand (R)",
+                "TRY - Turkish Lira (₺)",
+                "BRL - Brazilian Real (R$)",
+                "MXN - Mexican Peso ($)",
+                "NZD - New Zealand Dollar (NZ$)",
+                "RUB - Russian Ruble (₽)",
+              ]}
+              value={form.currency}
+              onChange={handleChange}
+              name="currency"
+              placeholder="Select Currency"
+            />
+          </div>
         </div>
 
         <div className="relative w-full flex flex-row justify-center my-10">
@@ -536,32 +798,69 @@ export default function Myshop() {
             WhatsApp Number
           </label>
 
-          <input
-            name="whatsappNumber"
-            value={form.whatsappNumber}
-            onChange={handleChange}
-            type="tel"
-            placeholder="Enter WhatsApp number"
-            className="
-     w-[65%]
-      px-5 
-      py-6
-      border-2 
-      border-black
-      rounded-[25px]
-      text-base
-      font-bold
-      bg-white
-      text:black
-       placeholder:text-gray-400
-      min-h-[60px]
-      transition-all
-      duration-300
-      focus:border-green-600
-      focus:shadow-md
-      outline-none
-    "
-          />
+          <div className="flex items-center w-[65%]">
+            <input
+              name="whatsappCode"
+              value={form.whatsappCode}
+              onChange={handleChange}
+              type="text"
+              placeholder="+91"
+              list="whatsapp-country-codes"
+              className="
+        px-3
+        py-6
+        border-2
+        border-black
+        rounded-l-[25px]
+        text-base
+        font-bold
+        bg-white
+        text-black
+        min-h-[60px]
+        transition-all
+        duration-300
+        focus:border-green-600
+        focus:shadow-md
+        outline-none
+        w-[30%]
+      "
+            />
+            <datalist id="whatsapp-country-codes">
+              {countries.map((country) => (
+                <option key={country.code} value={country.code}>
+                  {country.name} ({country.code})
+                </option>
+              ))}
+            </datalist>
+
+            <input
+              name="whatsappNumber"
+              value={form.whatsappNumber}
+              onChange={handleChange}
+              type="tel"
+              placeholder="Enter WhatsApp number"
+              className="
+        w-[70%]
+        px-5
+        py-6
+        border-2
+        border-l-0
+        border-black
+        rounded-r-[25px]
+        text-base
+        font-bold
+        bg-white
+        text-black
+        placeholder:text-gray-400
+        min-h-[60px]
+        transition-all
+        duration-300
+        focus:border-green-600
+        focus:shadow-md
+        outline-none
+      "
+            />
+          </div>
         </div>
         <div className="relative w-full flex flex-row justify-center my-10">
           <label
@@ -717,6 +1016,188 @@ export default function Myshop() {
           >
             Reset
           </button>
+        </div>
+      </div>
+
+      {/* Sub Users Section */}
+      <div className="flex justify-center mt-10 px-4 sm:px-0">
+        <div className="w-full max-w-2xl space-y-6">
+          <h2 className="text-[20px] font-semibold text-[#007A3F] mb-3">
+            {editingSubUser ? "Edit Sub User" : "Add New Sub User"}
+          </h2>
+
+          {isSubUser ? (
+            <div className="rounded-xl p-5 text-gray-700 bg-gray-50 border">
+              Sub-users cannot add or manage other sub-users.
+            </div>
+          ) : (
+            <>
+              <div className="border border-[#007A3F] rounded-xl p-5 grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Sub User Form fields */}
+                <div>
+                  <label className="text-sm font-medium text-gray-700">
+                    Sub User Name
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="user_xzy"
+                    className="w-full mt-1 border rounded-xl p-3 outline-none"
+                    value={subUserForm.subUsername}
+                    onChange={(e) =>
+                      setSubUserForm((s) => ({
+                        ...s,
+                        subUsername: e.target.value,
+                      }))
+                    }
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-700">
+                    Email
+                  </label>
+                  <input
+                    type="email"
+                    placeholder="user@email.com"
+                    className="w-full mt-1 border rounded-xl p-3 outline-none"
+                    value={subUserForm.email}
+                    onChange={(e) =>
+                      setSubUserForm((s) => ({ ...s, email: e.target.value }))
+                    }
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-700">
+                    Password
+                  </label>
+                  <div className="relative mt-1">
+                    <input
+                      type={showSubPassword ? "text" : "password"}
+                      placeholder="********"
+                      className="w-full border rounded-xl p-3 pr-12 outline-none"
+                      value={subUserForm.password}
+                      onChange={(e) =>
+                        setSubUserForm((s) => ({
+                          ...s,
+                          password: e.target.value,
+                        }))
+                      }
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowSubPassword(!showSubPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-600 hover:text-gray-800"
+                    >
+                      {showSubPassword ? (
+                        <FaEyeSlash size={18} />
+                      ) : (
+                        <FaEye size={18} />
+                      )}
+                    </button>
+                  </div>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-700">
+                    Phone Number
+                  </label>
+                  <input
+                    type="tel"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    placeholder="2183103335"
+                    className="w-full mt-1 border rounded-xl p-3 outline-none"
+                    value={subUserForm.phoneNumber}
+                    onChange={(e) =>
+                      setSubUserForm((s) => ({
+                        ...s,
+                        phoneNumber: e.target.value.replace(/\D/g, ""),
+                      }))
+                    }
+                  />
+                </div>
+              </div>
+
+              <div className="text-center mt-3">
+                <button
+                  className="bg-[#007A3F] text-white font-medium py-3 px-10 rounded-full hover:bg-green-700 transition disabled:opacity-60"
+                  onClick={
+                    editingSubUser ? handleUpdateSubUser : handleAddSubUser
+                  }
+                  disabled={subLoading}
+                >
+                  {subLoading
+                    ? "Saving..."
+                    : editingSubUser
+                    ? "Update Sub User"
+                    : "Add Sub User"}
+                </button>
+                {editingSubUser && (
+                  <button
+                    onClick={() => {
+                      setEditingSubUser(null);
+                      setSubUserForm({
+                        subUsername: "",
+                        email: "",
+                        password: "",
+                        phoneNumber: "",
+                      });
+                    }}
+                    className="ml-4 text-red-600 underline"
+                  >
+                    Cancel
+                  </button>
+                )}
+              </div>
+            </>
+          )}
+
+          <h2 className="text-[20px] font-semibold text-[#007A3F] mb-4 mt-10">
+            Existing Sub Users
+          </h2>
+
+          {subUsers.length === 0 ? (
+            <p className="text-gray-600">No sub-users yet.</p>
+          ) : (
+            subUsers.map((s) => (
+              <div key={s._id} className="border rounded-xl p-4 mb-4 shadow-sm">
+                <div className="flex justify-between items-start">
+                  <p className="font-semibold text-gray-900">
+                    {s.subUsername || s.email}
+                  </p>
+                  <div className="flex gap-4">
+                    {!isSubUser && (
+                      <>
+                        <MdEdit
+                          onClick={() => handleEditSubUser(s)}
+                          className="text-[22px] cursor-pointer text-[#007A3F] hover:text-green-700"
+                        />
+                        <RiDeleteBinLine
+                          onClick={() => handleDeleteSubUser(s._id)}
+                          className="text-[22px] cursor-pointer text-red-600 hover:text-red-700"
+                        />
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 mt-3">
+                  <MdOutlineEmail className="text-[19px] text-[#007A3F]" />
+                  <p className="text-gray-600 text-[15px]">{s.email}</p>
+                </div>
+
+                <div className="flex items-center gap-3 mt-1">
+                  <LuPhone className="text-[19px] text-[#007A3F]" />
+                  <p className="text-gray-600 text-[15px]">{s.phoneNumber}</p>
+                </div>
+
+                <div className="flex items-center gap-3 mt-1">
+                  <CiCalendar className="text-[19px] text-[#007A3F]" />
+                  <p className="text-gray-600 text-[15px]">
+                    Created: {new Date(s.createdAt).toLocaleDateString()}
+                  </p>
+                </div>
+              </div>
+            ))
+          )}
         </div>
       </div>
     </>

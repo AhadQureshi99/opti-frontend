@@ -346,99 +346,97 @@ export default function Pendingorder() {
           </div>
         </div>
       ) : (
-        orders.map((order, index) => (
-          <div
-            key={order._id || index}
-            className="flex justify-center items-center mt-10"
-          >
-            <div className="bg-black/10 w-full sm:w-[90%] rounded-[20px] p-4 sm:p-5 shadow-md border border-white/40 mb-10">
-              <div className="flex flex-col gap-4 sm:gap-4">
-                <div>
-                  <h1 className="text-[16px] sm:text-[20px] font-bold text-gray-900 break-words">
-                    {(() => {
-                      return (
-                        order.patientName ||
+        <div className="flex flex-col gap-6 mt-6 pb-20 max-w-5xl mx-auto px-4">
+          {orders.map((order, index) => (
+            <div key={order._id || index} className="flex justify-center">
+              <div className="bg-white w-full rounded-3xl p-6 shadow-xl border border-gray-200 hover:shadow-2xl transition-all">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-5">
+                  <div>
+                    <h3 className="text-2xl font-bold text-gray-900">
+                      {order.patientName ||
                         order.name ||
                         order.customerName ||
                         (order.patient && order.patient.name) ||
-                        "Unknown"
-                      );
-                    })()}
-                    {String(order._id || "").startsWith("local-") && (
-                      <span className="ml-2 inline-block bg-yellow-100 text-yellow-800 text-xs px-2 py-0.5 rounded-full font-semibold">
-                        Local
-                      </span>
+                        "Unknown Patient"}
+                      {String(order._id || "").startsWith("local-") && (
+                        <span className="ml-2 inline-block bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded-full font-semibold">
+                          Local
+                        </span>
+                      )}
+                    </h3>
+                    <p className="text-lg text-gray-700 font-medium mt-1">
+                      Tracking ID: {order.trackingId || order._id}
+                    </p>
+                    <p className="text-base text-gray-600 mt-2 flex items-center gap-2">
+                      <FaPhoneAlt className="text-[#169D53]" />
+                      {order.whatsappNumber || "No number"}
+                    </p>
+                    <p className="text-base text-gray-600 mt-1">
+                      Amount:{" "}
+                      {(() => {
+                        const s =
+                          (order.currency &&
+                            (order.currency.match(/\(([^)]+)\)/) || [])[1]) ||
+                          currencySymbol ||
+                          "₹";
+                        const amt =
+                          typeof order.totalAmount === "string"
+                            ? parseFloat(order.totalAmount)
+                            : order.totalAmount;
+                        const display =
+                          typeof amt === "number" && !isNaN(amt)
+                            ? amt.toFixed(2)
+                            : order.totalAmount;
+                        return `${s}${display}`;
+                      })()}
+                    </p>
+                  </div>
+
+                  <div className="flex gap-6 items-center">
+                    {order?.whatsappNumber ? (
+                      <a
+                        href={`tel:${order.whatsappNumber}`}
+                        className="text-[#007A3F]"
+                        title={`Call ${order.whatsappNumber}`}
+                      >
+                        <FaPhoneAlt
+                          className="cursor-pointer hover:scale-110 transition"
+                          size={28}
+                        />
+                      </a>
+                    ) : (
+                      <FaPhoneAlt
+                        className="text-[#007A3F] cursor-not-allowed opacity-50"
+                        size={28}
+                      />
                     )}
-                  </h1>
-                  <p className="text-[12px] sm:text-[14px] text-gray-700 font-medium break-all">
-                    {order.trackingId || order._id}
-                  </p>
-                  <p className="text-[12px] sm:text-[14px] text-gray-700 break-all">
-                    {order.whatsappNumber}
-                  </p>
-                  <p className="text-[12px] sm:text-[14px] text-gray-700">
-                    Amount:{" "}
-                    {(() => {
-                      const s =
-                        (order.currency &&
-                          (order.currency.match(/\(([^)]+)\)/) || [])[1]) ||
-                        currencySymbol ||
-                        "₹";
-                      const amt =
-                        typeof order.totalAmount === "string"
-                          ? parseFloat(order.totalAmount)
-                          : order.totalAmount;
-                      const display =
-                        typeof amt === "number" && !isNaN(amt)
-                          ? amt.toFixed(2)
-                          : order.totalAmount;
-                      return `${s}${display}`;
-                    })()}
-                  </p>
-                </div>
 
-                <div className="flex flex-wrap gap-3 items-center justify-start sm:justify-end">
-                  {order?.whatsappNumber ? (
-                    <a
-                      href={`tel:${order.whatsappNumber}`}
-                      className="text-[#007A3F] flex-shrink-0"
-                      title={`Call ${order.whatsappNumber}`}
-                    >
-                      <FaPhoneAlt className="cursor-pointer" size={20} />
-                    </a>
-                  ) : (
-                    <FaPhoneAlt
-                      className="text-[#007A3F] cursor-not-allowed opacity-50 flex-shrink-0"
-                      size={20}
+                    <MdRemoveRedEye
+                      className="text-[#019AF8] cursor-pointer hover:scale-110 transition"
+                      size={28}
+                      onClick={() => {
+                        setSelectedOrder(order);
+                        setShowSlip(true);
+                      }}
                     />
-                  )}
 
-                  <MdRemoveRedEye
-                    className="text-[#019AF8] cursor-pointer flex-shrink-0"
-                    size={20}
-                    onClick={() => {
-                      setSelectedOrder(order);
-                      setShowSlip(true);
-                    }}
-                  />
+                    <MdEdit
+                      className="text-[#FF9101] cursor-pointer hover:scale-110 transition"
+                      size={28}
+                      onClick={() => navigate("/new-order", { state: { order } })}
+                    />
 
-                  <MdEdit
-                    className="text-[#FF9101] cursor-pointer flex-shrink-0"
-                    size={20}
-                    onClick={() => navigate("/new-order", { state: { order } })}
-                  />
-
-                  {order?.whatsappNumber ? (
-                    <a
-                      href={`https://wa.me/${String(
-                        order.whatsappNumber
-                      ).replace(/[^0-9]/g, "")}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="cursor-pointer flex-shrink-0"
-                      title={`Chat ${order.whatsappNumber} on WhatsApp`}
-                    >
-                      <svg height="20" width="20" viewBox="0 0 32 32">
+                    {order?.whatsappNumber ? (
+                      <a
+                        href={`https://wa.me/${String(
+                          order.whatsappNumber
+                        ).replace(/[^0-9]/g, "")}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="cursor-pointer hover:scale-110 transition"
+                        title={`Chat ${order.whatsappNumber} on WhatsApp`}
+                      >
+                        <svg height="28" width="28" viewBox="0 0 32 32">
                         <path
                           fill="#25D366"
                           d="M16 .667C7.64.667.667 7.64.667 16c0 2.82.735 5.555 2.132 7.963L0 32l8.315-2.745A15.26 15.26 0 0016 31.333C24.36 31.333 31.333 24.36 31.333 16S24.36.667 16 .667z"
@@ -467,43 +465,44 @@ export default function Pendingorder() {
                     </svg>
                   )}
 
-                  <RiDeleteBinLine
-                    className="text-[#FF0000] cursor-pointer flex-shrink-0"
-                    size={20}
-                    onClick={() => handleDelete(order._id)}
-                  />
-                  <MarkCompleteButton
-                    id={order._id}
-                    onComplete={() =>
-                      setOrders((prev) =>
-                        prev.filter((o) => o._id !== order._id)
-                      )
-                    }
-                  />
+                    <RiDeleteBinLine
+                      className="text-[#FF0000] cursor-pointer hover:scale-110 transition"
+                      size={28}
+                      onClick={() => handleDelete(order._id)}
+                    />
+                    <MarkCompleteButton
+                      id={order._id}
+                      onComplete={() =>
+                        setOrders((prev) =>
+                          prev.filter((o) => o._id !== order._id)
+                        )
+                      }
+                    />
+                  </div>
                 </div>
               </div>
             </div>
+          ))}
+        </div>
+      )}
 
-            {showSlip && (
-              <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex justify-center items-center z-50">
-                <div className="bg-white max-h-[90vh] w-[90%]  rounded-xl shadow-xl overflow-y-auto relative p-4">
-                  <button
-                    onClick={() => setShowSlip(false)}
-                    className="absolute top-3 right-3 text-black text-[20px] cursor-pointer"
-                  >
-                    ✕
-                  </button>
+      {showSlip && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex justify-center items-center z-50">
+          <div className="bg-white max-h-[90vh] w-[90%]  rounded-xl shadow-xl overflow-y-auto relative p-4">
+            <button
+              onClick={() => setShowSlip(false)}
+              className="absolute top-3 right-3 text-black text-[20px] cursor-pointer"
+            >
+              ✕
+            </button>
 
-                  {selectedOrder ? (
-                    <Customerorder order={selectedOrder} />
-                  ) : (
-                    <div className="p-6 text-center">No order selected</div>
-                  )}
-                </div>
-              </div>
+            {selectedOrder ? (
+              <Customerorder order={selectedOrder} />
+            ) : (
+              <div className="p-6 text-center">No order selected</div>
             )}
           </div>
-        ))
+        </div>
       )}
     </div>
   );

@@ -23,6 +23,10 @@ export default function Navbar() {
     navigate("/");
   };
 
+  const isSubUser =
+    typeof window !== "undefined" &&
+    localStorage.getItem("isSubUser") === "true";
+
   return (
     <>
       {/* Blurred Background Overlay */}
@@ -125,12 +129,15 @@ export default function Navbar() {
             >
               Home
             </Link>
-            <Link
-              to="/my-shop"
-              className="text-[#169D53] font-semibold py-2 text-base w-full px-4 text-left"
-            >
-              My Shop
-            </Link>
+            {/* My Shop - HIDDEN FOR SUB-USERS */}
+            {!isSubUser && (
+              <Link
+                to="/my-shop"
+                className="text-[#169D53] font-semibold py-2 text-base w-full px-4 text-left"
+              >
+                My Shop
+              </Link>
+            )}
 
             <div className="border-t border-gray-200 w-full"></div>
 

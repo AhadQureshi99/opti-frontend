@@ -1,13 +1,123 @@
 import { FaArrowLeft } from "react-icons/fa";
 import { Link, useNavigate } from "react-router-dom";
-import React, { useRef } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import { useToast } from "../components/ToastProvider";
 import { post } from "../utils/api";
+import { RiArrowDropDownLine } from "react-icons/ri";
+
+function generateOpticList(maxPlus, maxMinus, step) {
+  const arr = [];
+  for (let v = maxPlus; v >= step; v -= step) {
+    arr.push("+" + v.toFixed(2));
+  }
+  arr.push("0.00");
+  for (let v = step; v <= maxMinus; v += step) {
+    arr.push("-" + v.toFixed(2));
+  }
+  return arr;
+}
+
+function CustomDropdown({
+  options,
+  value,
+  onChange,
+  name,
+  placeholder = "Select",
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef(null);
+  const listRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  useEffect(() => {
+    if (isOpen && listRef.current) {
+      const zeroItem = listRef.current.querySelector('[data-value="0.00"]');
+      if (zeroItem) {
+        zeroItem.scrollIntoView({ block: "center" });
+        setTimeout(() => {
+          if (listRef.current) {
+            const itemHeight = zeroItem.offsetHeight || 48;
+            listRef.current.scrollTop -= itemHeight * 1.5;
+          }
+        }, 0);
+      }
+    }
+  }, [isOpen]);
+
+  return (
+    <div ref={dropdownRef} className="relative w-full">
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full border border-gray-300 hover:border-green-600 rounded-lg px-4 py-3 text-sm md:text-base focus:outline-none focus:ring-2 focus:ring-green-600 transition-all text-left flex justify-between items-center bg-white"
+      >
+        <span className="text-black">{value || placeholder}</span>
+        <RiArrowDropDownLine
+          size={22}
+          className={`text-gray-600 transition-transform ${
+            isOpen ? "rotate-180" : ""
+          }`}
+        />
+      </button>
+
+      {isOpen && (
+        <div
+          ref={listRef}
+          className="absolute left-0 right-0 top-full mt-2 max-h-96 overflow-y-auto border border-gray-300 bg-white rounded-lg shadow-xl z-50"
+        >
+          {options.map((option) => (
+            <button
+              key={option}
+              type="button"
+              data-value={option}
+              onClick={() => {
+                onChange({ target: { name, value: option } });
+                setIsOpen(false);
+              }}
+              className={`w-full text-left px-5 py-3 text-sm transition-colors ${
+                value === option
+                  ? "bg-green-600 text-white font-semibold"
+                  : "hover:bg-green-50"
+              }`}
+            >
+              {option}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function Addrecord() {
   const formRef = useRef(null);
   const navigate = useNavigate();
   const toast = useToast();
+
+  // Same options as Neworder.jsx
+  const sphOptions = generateOpticList(24, 24, 0.25);
+  const cylOptions = generateOpticList(6, 6, 0.25);
+  const addOptions = [
+    "Select",
+    ...Array.from({ length: 12 }, (_, i) => "+" + ((i + 1) * 0.25).toFixed(2)),
+  ];
+
+  const [rightSph, setRightSph] = useState("0.00");
+  const [rightCyl, setRightCyl] = useState("0.00");
+  const [rightAxis, setRightAxis] = useState("");
+  const [leftSph, setLeftSph] = useState("0.00");
+  const [leftCyl, setLeftCyl] = useState("0.00");
+  const [leftAxis, setLeftAxis] = useState("");
+  const [addValue, setAddValue] = useState("Select");
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -29,19 +139,41 @@ export default function Addrecord() {
         importantNote:
           form.querySelector('textarea[name="importantNote"]').value ||
           undefined,
+        rightEye: {
+          sph: rightSph === "Select" ? null : parseFloat(rightSph),
+          cyl: rightCyl === "Select" ? null : parseFloat(rightCyl),
+          axis: rightAxis ? parseInt(rightAxis) : null,
+        },
+        leftEye: {
+          sph: leftSph === "Select" ? null : parseFloat(leftSph),
+          cyl: leftCyl === "Select" ? null : parseFloat(leftCyl),
+          axis: leftAxis ? parseInt(leftAxis) : null,
+        },
+        addInput: addValue === "Select" ? "" : addValue,
       };
-      // use auth-aware helper which will attach Authorization header
+
       await post("/api/orders/create", data, { cacheKey: "orders" });
       toast.addToast("Record added", { type: "success" });
-      // clear the form but stay on Add Record page so user can add more
+
+      // Reset form
       try {
-        const f = formRef.current;
-        if (f && typeof f.reset === "function") f.reset();
-      } catch (e) {}
+        form.reset();
+        setRightSph("0.00");
+        setRightCyl("0.00");
+        setRightAxis("");
+        setLeftSph("0.00");
+        setLeftCyl("0.00");
+        setLeftAxis("");
+        setAddValue("Select");
+      } catch (err) {}
     } catch (err) {
       console.error(err);
       toast.addToast(err.message || "Create order failed", { type: "error" });
     }
+  };
+
+  const handleDropdownChange = (setter) => (e) => {
+    setter(e.target.value);
   };
 
   return (
@@ -73,14 +205,15 @@ export default function Addrecord() {
         />
       </div>
 
-      <div className="relative w-full flex flex-row justify-center  my-10">
+      {/* Patient Info */}
+      <div className="relative w-full flex flex-row justify-center my-10">
         <label
           className="
           absolute
           sm:-top-4
-      -top-4
-      sm:left-60
-      left-6
+          -top-4
+          sm:left-60
+          left-6
           bg-white
           px-2
           text-sm
@@ -94,15 +227,15 @@ export default function Addrecord() {
         <input
           name="patientName"
           type="text"
-          placeholder="XXXXXXXXXX"
+          placeholder="Enter patient name"
           className="
           sm:w-[65%]
-      sm:px-5 
-      sm:py-6
-      py-2
-      px-5
-      w-full
-       mx-4
+          sm:px-5 
+          sm:py-6
+          py-2
+          px-5
+          w-full
+          mx-4
           border-2 
           border-black
           rounded-[25px]
@@ -120,14 +253,14 @@ export default function Addrecord() {
         />
       </div>
 
-      <div className="relative w-full flex flex-row justify-center  my-10">
+      <div className="relative w-full flex flex-row justify-center my-10">
         <label
           className="
           absolute
           sm:-top-4
-      -top-4
-      sm:left-60
-      left-6
+          -top-4
+          sm:left-60
+          left-6
           bg-white
           px-2
           text-sm
@@ -138,19 +271,18 @@ export default function Addrecord() {
         >
           WhatsApp Number
         </label>
-
         <input
           name="whatsappNumber"
           type="text"
-          placeholder="XXXXXXXXXX"
+          placeholder="Enter WhatsApp number"
           className="
-           sm:w-[65%]
-      sm:px-5 
-      sm:py-6
-      py-2
-      px-5
-      w-full
-       mx-4
+          sm:w-[65%]
+          sm:px-5 
+          sm:py-6
+          py-2
+          px-5
+          w-full
+          mx-4
           border-2 
           border-black
           rounded-[25px]
@@ -168,14 +300,15 @@ export default function Addrecord() {
         />
       </div>
 
-      <div className="relative w-full flex flex-row justify-center  my-10">
+      {/* Frame & Lens */}
+      <div className="relative w-full flex flex-row justify-center my-10">
         <label
           className="
           absolute
           sm:-top-4
-      -top-4
-      sm:left-60
-      left-6
+          -top-4
+          sm:left-60
+          left-6
           bg-white
           px-2
           text-sm
@@ -186,19 +319,18 @@ export default function Addrecord() {
         >
           Frame Detail
         </label>
-
         <input
           name="frameDetails"
           type="text"
-          placeholder="XXXXXXXXXX"
+          placeholder="Enter frame details"
           className="
           sm:w-[65%]
-      sm:px-5 
-      sm:py-6
-      py-2
-      px-5
-      w-full
-       mx-4
+          sm:px-5 
+          sm:py-6
+          py-2
+          px-5
+          w-full
+          mx-4
           border-2 
           border-black
           rounded-[25px]
@@ -216,14 +348,14 @@ export default function Addrecord() {
         />
       </div>
 
-      <div className="relative w-full flex flex-row justify-center  my-10">
+      <div className="relative w-full flex flex-row justify-center my-10">
         <label
           className="
           absolute
           sm:-top-4
-      -top-4
-      sm:left-60
-      left-6
+          -top-4
+          sm:left-60
+          left-6
           bg-white
           px-2
           text-sm
@@ -234,19 +366,18 @@ export default function Addrecord() {
         >
           Lens Type
         </label>
-
         <input
           name="lensType"
           type="text"
-          placeholder="XXXXXXXXXX"
+          placeholder="Enter lens type"
           className="
           sm:w-[65%]
-      sm:px-5 
-      sm:py-6
-      py-2
-      px-5
-      w-full
-       mx-4
+          sm:px-5 
+          sm:py-6
+          py-2
+          px-5
+          w-full
+          mx-4
           border-2 
           border-black
           rounded-[25px]
@@ -264,62 +395,15 @@ export default function Addrecord() {
         />
       </div>
 
-      <div className="relative w-full flex flex-row justify-center  my-10">
-        <label
-          className="
-          absolute
-         sm:-top-4
-      -top-4
-      sm:left-60
-      left-6
-          bg-white
-          px-2
-          text-sm
-          font-bold
-          text-black
-          z-20
-        "
-        >
-          Delivery Date
-        </label>
-
-        <input
-          name="deliveryDate"
-          type="date"
-          placeholder="Advance"
-          className="
-          sm:w-[65%]
-      sm:px-5 
-      sm:py-6
-      py-2
-      px-5
-      w-full
-       mx-4
-          border-2 
-          border-black
-          rounded-[25px]
-          text-sm
-          font-bold
-          text-black
-          bg-white
-          min-h-[60px]
-          transition-all
-          duration-300
-          focus:border-green-600
-          focus:shadow-md
-          outline-none
-        "
-        />
-      </div>
-
-      <div className="relative w-full flex flex-row justify-center  my-10">
+      {/* Amounts */}
+      <div className="relative w-full flex flex-row justify-center my-10">
         <label
           className="
           absolute
           sm:-top-4
-      -top-4
-      sm:left-60
-      left-6
+          -top-4
+          sm:left-60
+          left-6
           bg-white
           px-2
           text-sm
@@ -330,19 +414,18 @@ export default function Addrecord() {
         >
           Total Amount
         </label>
-
         <input
           name="totalAmount"
           type="text"
-          placeholder="Total Amount"
+          placeholder="Enter total amount"
           className="
-           sm:w-[65%]
-      sm:px-5 
-      sm:py-6
-      py-2
-      px-5
-      w-full
-       mx-4
+          sm:w-[65%]
+          sm:px-5 
+          sm:py-6
+          py-2
+          px-5
+          w-full
+          mx-4
           border-2 
           border-black
           rounded-[25px]
@@ -360,661 +443,200 @@ export default function Addrecord() {
         />
       </div>
 
-      <div className="relative w-full flex flex-row justify-center">
+      {/* Delivery Date */}
+      <div className="relative w-full flex flex-row justify-center my-10">
         <label
           className="
-      absolute
-      sm:-top-4
-      -top-4
-      sm:left-60
-      left-6
-      bg-white
-      px-2
-      text-sm
-      font-bold
-      text-black
-      z-20
-    "
+          absolute
+          sm:-top-4
+          -top-4
+          sm:left-60
+          left-6
+          bg-white
+          px-2
+          text-sm
+          font-bold
+          text-black
+          z-20
+        "
         >
-          Special Note
+          Delivery Date
         </label>
-
-        <textarea
-          name="importantNote"
-          type="text"
-          placeholder="Type Here..."
+        <input
+          name="deliveryDate"
+          type="date"
+          placeholder="Select delivery date"
           className="
-       sm:w-[65%]
-      sm:px-5 
-      sm:py-6
-      py-8
-      px-5
-      w-full
-       mx-4
-      rows-6
-      col-8
-      border-2 
-      border-black
-      sm:rounded-[25px]
-      rounded-[22px]
-      text-base
-      font-bold
-      bg-white
-      resize-y
-       text-black
-      min-h-[60px]
-      transition-all
-      duration-300
-      focus:border-green-600
-      focus:shadow-md
-      outline-none
-    "
+          sm:w-[65%]
+          sm:px-5 
+          sm:py-6
+          py-2
+          px-5
+          w-full
+          mx-4
+          border-2 
+          border-black
+          rounded-[25px]
+          text-sm
+          font-bold
+          text-black
+          bg-white
+          min-h-[60px]
+          transition-all
+          duration-300
+          focus:border-green-600
+          focus:shadow-md
+          outline-none
+        "
         />
       </div>
 
-      <div className="flex flex-col md:flex-row gap-6 w-full justify-center mt-10 ">
-        <div className="bg-white rounded-2xl shadow-md border border-gray-100 md:w-[31%] mx-4 pb-6 overflow-hidden">
-          <div className="flex-1 bg-[#169D53]  py-[12px]  text-white font-semibold text-[16px] text-center mb-6">
+      {/* Special Note */}
+      <div className="relative w-full flex flex-row justify-center">
+        <label
+          className="
+          absolute
+          sm:-top-4
+          -top-4
+          sm:left-60
+          left-6
+          bg-white
+          px-2
+          text-sm
+          font-bold
+          text-black
+          z-20
+        "
+        >
+          Special Note
+        </label>
+        <textarea
+          name="importantNote"
+          placeholder="Enter any special notes or instructions..."
+          className="
+          sm:w-[65%]
+          sm:px-5 
+          sm:py-6
+          py-8
+          px-5
+          w-full
+          mx-4
+          rows-6
+          border-2 
+          border-black
+          sm:rounded-[25px]
+          rounded-[22px]
+          text-base
+          font-bold
+          bg-white
+          resize-y
+          text-black
+          min-h-[60px]
+          transition-all
+          duration-300
+          focus:border-green-600
+          focus:shadow-md
+          outline-none
+        "
+        />
+      </div>
+
+      {/* Eyes Section - Now matches Neworder exactly */}
+      <div className="flex flex-col md:flex-row gap-6 w-full justify-center mt-10 px-4 sm:px-0">
+        {/* Right Eye */}
+        <div className="bg-white border border-gray-200 rounded-2xl shadow-lg p-6 md:w-[45%]">
+          <h2 className="text-xl font-bold text-white bg-green-600 text-center py-3 rounded-t-2xl -mx-6 -mt-6 mb-6">
             Right Eye
-          </div>
-
-          <div className="flex flex-col gap-4 px-6">
+          </h2>
+          <div className="space-y-7">
             <div>
-              <label className="block text-sm text-left text-[#666] font-semibold mb-1">
-                Sph
-              </label>
-              <select className="w-full border border-gray-300 hover:border-[#169D53] hover:border-2 rounded-md p-2">
-                <option>Select</option>
-                <option>+24.00</option>
-                <option>+23.75</option>
-                <option>+23.50</option>
-                <option>+23.25</option>
-                <option>+23.00</option>
-                <option>+22.75</option>
-                <option>+22.50</option>
-                <option>+22.25</option>
-                <option>+22.00</option>
-                <option>+21.75</option>
-                <option>+21.50</option>
-                <option>+21.25</option>
-                <option>+21.00</option>
-                <option>+20.75</option>
-                <option>+20.50</option>
-                <option>+20.25</option>
-                <option>+20.00</option>
-                <option>+19.75</option>
-                <option>+19.50</option>
-                <option>+19.25</option>
-                <option>+19.00</option>
-                <option>+18.75</option>
-                <option>+18.50</option>
-                <option>+18.25</option>
-                <option>+18.00</option>
-                <option>+17.75</option>
-                <option>+17.50</option>
-                <option>+17.25</option>
-                <option>+17.00</option>
-                <option>+16.75</option>
-                <option>+16.50</option>
-                <option>+16.25</option>
-                <option>+16.00</option>
-                <option>+15.75</option>
-                <option>+15.50</option>
-                <option>+15.25</option>
-                <option>+15.00</option>
-                <option>+14.75</option>
-                <option>+14.50</option>
-                <option>+14.25</option>
-                <option>+14.00</option>
-                <option>+13.75</option>
-                <option>+13.50</option>
-                <option>+13.25</option>
-                <option>+13.00</option>
-                <option>+12.75</option>
-                <option>+12.50</option>
-                <option>+12.25</option>
-                <option>+12.00</option>
-                <option>+11.75</option>
-                <option>+11.50</option>
-                <option>+11.25</option>
-                <option>+11.00</option>
-                <option>+10.75</option>
-                <option>+10.50</option>
-                <option>+10.25</option>
-                <option>+10.00</option>
-                <option>+9.75</option>
-                <option>+9.50</option>
-                <option>+9.25</option>
-                <option>+9.00</option>
-                <option>+8.75</option>
-                <option>+8.50</option>
-                <option>+8.25</option>
-                <option>+8.00</option>
-                <option>+7.75</option>
-                <option>+7.50</option>
-                <option>+7.25</option>
-                <option>+7.00</option>
-                <option>+6.75</option>
-                <option>+6.50</option>
-                <option>+6.25</option>
-                <option>+6.00</option>
-                <option>+5.75</option>
-                <option>+5.50</option>
-                <option>+5.25</option>
-                <option>+5.00</option>
-                <option>+4.75</option>
-                <option>+4.50</option>
-                <option>+4.25</option>
-                <option>+4.00</option>
-                <option>+3.75</option>
-                <option>+3.50</option>
-                <option>+3.25</option>
-                <option>+3.00</option>
-                <option>+2.75</option>
-                <option>+2.50</option>
-                <option>+2.25</option>
-                <option>+2.00</option>
-                <option>+1.75</option>
-                <option>+1.50</option>
-                <option>+1.25</option>
-                <option>+1.00</option>
-                <option>+0.75</option>
-                <option>+0.50</option>
-                <option>+0.25</option>
-                <option>0.00</option>
-                <option>-0.25</option>
-                <option>-0.50</option>
-                <option>-0.75</option>
-                <option>-1.00</option>
-                <option>-1.25</option>
-                <option>-1.50</option>
-                <option>-1.75</option>
-                <option>-2.00</option>
-                <option>-2.25</option>
-                <option>-2.50</option>
-                <option>-2.75</option>
-                <option>-3.00</option>
-                <option>-3.25</option>
-                <option>-3.50</option>
-                <option>-3.75</option>
-                <option>-4.00</option>
-                <option>-4.25</option>
-                <option>-4.50</option>
-                <option>-4.75</option>
-                <option>-5.00</option>
-                <option>-5.25</option>
-                <option>-5.50</option>
-                <option>-5.75</option>
-                <option>-6.00</option>
-                <option>-6.25</option>
-                <option>-6.50</option>
-                <option>-6.75</option>
-                <option>-7.00</option>
-                <option>-7.25</option>
-                <option>-7.50</option>
-                <option>-7.75</option>
-                <option>-8.00</option>
-                <option>-8.25</option>
-                <option>-8.50</option>
-                <option>-8.75</option>
-                <option>-9.00</option>
-                <option>-9.25</option>
-                <option>-9.50</option>
-                <option>-9.75</option>
-                <option>-10.00</option>
-                <option>-10.25</option>
-                <option>-10.50</option>
-                <option>-10.75</option>
-                <option>-11.00</option>
-                <option>-11.25</option>
-                <option>-11.50</option>
-                <option>-11.75</option>
-                <option>-12.00</option>
-                <option>-12.25</option>
-                <option>-12.50</option>
-                <option>-12.75</option>
-                <option>-13.00</option>
-                <option>-13.25</option>
-                <option>-13.50</option>
-                <option>-13.75</option>
-                <option>-14.00</option>
-                <option>-14.25</option>
-                <option>-14.50</option>
-                <option>-14.75</option>
-                <option>-15.00</option>
-                <option>-15.25</option>
-                <option>-15.50</option>
-                <option>-15.75</option>
-                <option>-16.00</option>
-                <option>-16.25</option>
-                <option>-16.50</option>
-                <option>-16.75</option>
-                <option>-17.00</option>
-                <option>-17.25</option>
-                <option>-17.50</option>
-                <option>-17.75</option>
-                <option>-18.00</option>
-                <option>-18.25</option>
-                <option>-18.50</option>
-                <option>-18.75</option>
-                <option>-19.00</option>
-                <option>-19.25</option>
-                <option>-19.50</option>
-                <option>-19.75</option>
-                <option>-19.00</option>
-                <option>-19.25</option>
-                <option>-19.50</option>
-                <option>-19.75</option>
-                <option>-20.00</option>
-                <option>-20.25</option>
-                <option>-20.50</option>
-                <option>-20.75</option>
-                <option>-21.00</option>
-                <option>-21.25</option>
-                <option>-21.50</option>
-                <option>-21.75</option>
-                <option>-22.00</option>
-                <option>-22.25</option>
-                <option>-22.50</option>
-                <option>-22.75</option>
-                <option>-23.00</option>
-                <option>-23.25</option>
-                <option>-23.50</option>
-                <option>-23.75</option>
-                <option>-24.00</option>
-              </select>
+              <label className="block text-sm font-semibold mb-2">Sph</label>
+              <CustomDropdown
+                options={sphOptions}
+                value={rightSph}
+                onChange={handleDropdownChange(setRightSph)}
+                name="rightSph"
+                placeholder="Select Sph"
+              />
             </div>
-
             <div>
-              <label className="block text-sm text-left text-[#666] font-semibold mb-1">
-                Cyl
-              </label>
-              <select className="w-full border border-gray-300 hover:border-[#169D53] hover:border-2 rounded-md p-2">
-                <option>Select</option>
-                <option>+6.00</option>
-                <option>+5.75</option>
-                <option>+5.50</option>
-                <option>+5.25</option>
-                <option>+5.00</option>
-                <option>+4.75</option>
-                <option>+4.50</option>
-                <option>+4.25</option>
-                <option>+4.00</option>
-                <option>+3.75</option>
-                <option>+3.50</option>
-                <option>+3.25</option>
-                <option>+3.00</option>
-                <option>+2.75</option>
-                <option>+2.50</option>
-                <option>+2.25</option>
-                <option>+2.00</option>
-                <option>+1.75</option>
-                <option>+1.50</option>
-                <option>+1.25</option>
-                <option>+1.00</option>
-                <option>+0.75</option>
-                <option>+0.50</option>
-                <option>+0.25</option>
-                <option>0.00</option>
-                <option>-0.25</option>
-                <option>-0.50</option>
-                <option>-0.75</option>
-                <option>-1.00</option>
-                <option>-1.25</option>
-                <option>-1.50</option>
-                <option>-1.75</option>
-                <option>-2.00</option>
-                <option>-2.25</option>
-                <option>-2.50</option>
-                <option>-2.75</option>
-                <option>-3.00</option>
-                <option>-3.25</option>
-                <option>-3.50</option>
-                <option>-3.75</option>
-                <option>-4.00</option>
-                <option>-4.25</option>
-                <option>-4.50</option>
-                <option>-4.75</option>
-                <option>-5.00</option>
-                <option>-5.25</option>
-                <option>-5.50</option>
-                <option>-5.75</option>
-                <option>-6.00</option>
-              </select>
+              <label className="block text-sm font-semibold mb-2">Cyl</label>
+              <CustomDropdown
+                options={cylOptions}
+                value={rightCyl}
+                onChange={handleDropdownChange(setRightCyl)}
+                name="rightCyl"
+                placeholder="Select Cyl"
+              />
             </div>
-
             <div>
-              <label className="block text-sm text-left text-[#666] font-semibold mb-1">
-                Axis
-              </label>
+              <label className="block text-sm font-semibold mb-2">Axis</label>
               <input
                 type="number"
-                placeholder="1 to 180"
-                className="w-full border border-gray-300 rounded-md p-2"
+                placeholder="1 - 180"
+                value={rightAxis}
+                onChange={(e) => setRightAxis(e.target.value)}
+                className="w-full border border-gray-300 rounded-lg px-5 py-3 focus:border-green-600 outline-none"
               />
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl  shadow-md border border-gray-100 md:w-[31%] mx-4 overflow-hidden">
-          <div className="flex-1 bg-[#169D53]  py-[12px]  text-white font-semibold text-[16px] text-center mb-6 ">
+        {/* Left Eye */}
+        <div className="bg-white border border-gray-200 rounded-2xl shadow-lg p-6 md:w-[45%]">
+          <h2 className="text-xl font-bold text-white bg-green-600 text-center py-3 rounded-t-2xl -mx-6 -mt-6 mb-6">
             Left Eye
-          </div>
-
-          <div className="flex flex-col gap-4 px-6 pb-6">
+          </h2>
+          <div className="space-y-7">
             <div>
-              <label className="block text-sm text-left text-[#666] font-semibold mb-1">
-                Sph
-              </label>
-              <select className="w-full border border-gray-300 hover:border-[#169D53] hover:border-2 rounded-md p-2">
-                <option>Select</option>
-                <option>+24.00</option>
-                <option>+23.75</option>
-                <option>+23.50</option>
-                <option>+23.25</option>
-                <option>+23.00</option>
-                <option>+22.75</option>
-                <option>+22.50</option>
-                <option>+22.25</option>
-                <option>+22.00</option>
-                <option>+21.75</option>
-                <option>+21.50</option>
-                <option>+21.25</option>
-                <option>+21.00</option>
-                <option>+20.75</option>
-                <option>+20.50</option>
-                <option>+20.25</option>
-                <option>+20.00</option>
-                <option>+19.75</option>
-                <option>+19.50</option>
-                <option>+19.25</option>
-                <option>+19.00</option>
-                <option>+18.75</option>
-                <option>+18.50</option>
-                <option>+18.25</option>
-                <option>+18.00</option>
-                <option>+17.75</option>
-                <option>+17.50</option>
-                <option>+17.25</option>
-                <option>+17.00</option>
-                <option>+16.75</option>
-                <option>+16.50</option>
-                <option>+16.25</option>
-                <option>+16.00</option>
-                <option>+15.75</option>
-                <option>+15.50</option>
-                <option>+15.25</option>
-                <option>+15.00</option>
-                <option>+14.75</option>
-                <option>+14.50</option>
-                <option>+14.25</option>
-                <option>+14.00</option>
-                <option>+13.75</option>
-                <option>+13.50</option>
-                <option>+13.25</option>
-                <option>+13.00</option>
-                <option>+12.75</option>
-                <option>+12.50</option>
-                <option>+12.25</option>
-                <option>+12.00</option>
-                <option>+11.75</option>
-                <option>+11.50</option>
-                <option>+11.25</option>
-                <option>+11.00</option>
-                <option>+10.75</option>
-                <option>+10.50</option>
-                <option>+10.25</option>
-                <option>+10.00</option>
-                <option>+9.75</option>
-                <option>+9.50</option>
-                <option>+9.25</option>
-                <option>+9.00</option>
-                <option>+8.75</option>
-                <option>+8.50</option>
-                <option>+8.25</option>
-                <option>+8.00</option>
-                <option>+7.75</option>
-                <option>+7.50</option>
-                <option>+7.25</option>
-                <option>+7.00</option>
-                <option>+6.75</option>
-                <option>+6.50</option>
-                <option>+6.25</option>
-                <option>+6.00</option>
-                <option>+5.75</option>
-                <option>+5.50</option>
-                <option>+5.25</option>
-                <option>+5.00</option>
-                <option>+4.75</option>
-                <option>+4.50</option>
-                <option>+4.25</option>
-                <option>+4.00</option>
-                <option>+3.75</option>
-                <option>+3.50</option>
-                <option>+3.25</option>
-                <option>+3.00</option>
-                <option>+2.75</option>
-                <option>+2.50</option>
-                <option>+2.25</option>
-                <option>+2.00</option>
-                <option>+1.75</option>
-                <option>+1.50</option>
-                <option>+1.25</option>
-                <option>+1.00</option>
-                <option>+0.75</option>
-                <option>+0.50</option>
-                <option>+0.25</option>
-                <option>0.00</option>
-                <option>-0.25</option>
-                <option>-0.50</option>
-                <option>-0.75</option>
-                <option>-1.00</option>
-                <option>-1.25</option>
-                <option>-1.50</option>
-                <option>-1.75</option>
-                <option>-2.00</option>
-                <option>-2.25</option>
-                <option>-2.50</option>
-                <option>-2.75</option>
-                <option>-3.00</option>
-                <option>-3.25</option>
-                <option>-3.50</option>
-                <option>-3.75</option>
-                <option>-4.00</option>
-                <option>-4.25</option>
-                <option>-4.50</option>
-                <option>-4.75</option>
-                <option>-5.00</option>
-                <option>-5.25</option>
-                <option>-5.50</option>
-                <option>-5.75</option>
-                <option>-6.00</option>
-                <option>-6.25</option>
-                <option>-6.50</option>
-                <option>-6.75</option>
-                <option>-7.00</option>
-                <option>-7.25</option>
-                <option>-7.50</option>
-                <option>-7.75</option>
-                <option>-8.00</option>
-                <option>-8.25</option>
-                <option>-8.50</option>
-                <option>-8.75</option>
-                <option>-9.00</option>
-                <option>-9.25</option>
-                <option>-9.50</option>
-                <option>-9.75</option>
-                <option>-10.00</option>
-                <option>-10.25</option>
-                <option>-10.50</option>
-                <option>-10.75</option>
-                <option>-11.00</option>
-                <option>-11.25</option>
-                <option>-11.50</option>
-                <option>-11.75</option>
-                <option>-12.00</option>
-                <option>-12.25</option>
-                <option>-12.50</option>
-                <option>-12.75</option>
-                <option>-13.00</option>
-                <option>-13.25</option>
-                <option>-13.50</option>
-                <option>-13.75</option>
-                <option>-14.00</option>
-                <option>-14.25</option>
-                <option>-14.50</option>
-                <option>-14.75</option>
-                <option>-15.00</option>
-                <option>-15.25</option>
-                <option>-15.50</option>
-                <option>-15.75</option>
-                <option>-16.00</option>
-                <option>-16.25</option>
-                <option>-16.50</option>
-                <option>-16.75</option>
-                <option>-17.00</option>
-                <option>-17.25</option>
-                <option>-17.50</option>
-                <option>-17.75</option>
-                <option>-18.00</option>
-                <option>-18.25</option>
-                <option>-18.50</option>
-                <option>-18.75</option>
-                <option>-19.00</option>
-                <option>-19.25</option>
-                <option>-19.50</option>
-                <option>-19.75</option>
-                <option>-19.00</option>
-                <option>-19.25</option>
-                <option>-19.50</option>
-                <option>-19.75</option>
-                <option>-20.00</option>
-                <option>-20.25</option>
-                <option>-20.50</option>
-                <option>-20.75</option>
-                <option>-21.00</option>
-                <option>-21.25</option>
-                <option>-21.50</option>
-                <option>-21.75</option>
-                <option>-22.00</option>
-                <option>-22.25</option>
-                <option>-22.50</option>
-                <option>-22.75</option>
-                <option>-23.00</option>
-                <option>-23.25</option>
-                <option>-23.50</option>
-                <option>-23.75</option>
-                <option>-24.00</option>
-              </select>
+              <label className="block text-sm font-semibold mb-2">Sph</label>
+              <CustomDropdown
+                options={sphOptions}
+                value={leftSph}
+                onChange={handleDropdownChange(setLeftSph)}
+                name="leftSph"
+                placeholder="Select Sph"
+              />
             </div>
-
             <div>
-              <label className="block text-sm text-left text-[#666] font-semibold mb-1">
-                Cyl
-              </label>
-              <select className="w-full border border-gray-300 hover:border-[#169D53] hover:border-2 rounded-md p-2">
-                <option>Select</option>
-                <option>+6.00</option>
-                <option>+5.75</option>
-                <option>+5.50</option>
-                <option>+5.25</option>
-                <option>+5.00</option>
-                <option>+4.75</option>
-                <option>+4.50</option>
-                <option>+4.25</option>
-                <option>+4.00</option>
-                <option>+3.75</option>
-                <option>+3.50</option>
-                <option>+3.25</option>
-                <option>+3.00</option>
-                <option>+2.75</option>
-                <option>+2.50</option>
-                <option>+2.25</option>
-                <option>+2.00</option>
-                <option>+1.75</option>
-                <option>+1.50</option>
-                <option>+1.25</option>
-                <option>+1.00</option>
-                <option>+0.75</option>
-                <option>+0.50</option>
-                <option>+0.25</option>
-                <option>0.00</option>
-                <option>-0.25</option>
-                <option>-0.50</option>
-                <option>-0.75</option>
-                <option>-1.00</option>
-                <option>-1.25</option>
-                <option>-1.50</option>
-                <option>-1.75</option>
-                <option>-2.00</option>
-                <option>-2.25</option>
-                <option>-2.50</option>
-                <option>-2.75</option>
-                <option>-3.00</option>
-                <option>-3.25</option>
-                <option>-3.50</option>
-                <option>-3.75</option>
-                <option>-4.00</option>
-                <option>-4.25</option>
-                <option>-4.50</option>
-                <option>-4.75</option>
-                <option>-5.00</option>
-                <option>-5.25</option>
-                <option>-5.50</option>
-                <option>-5.75</option>
-                <option>-6.00</option>
-              </select>
+              <label className="block text-sm font-semibold mb-2">Cyl</label>
+              <CustomDropdown
+                options={cylOptions}
+                value={leftCyl}
+                onChange={handleDropdownChange(setLeftCyl)}
+                name="leftCyl"
+                placeholder="Select Cyl"
+              />
             </div>
-
             <div>
-              <label className="block text-sm text-left text-[#666] font-semibold mb-1">
-                Axis
-              </label>
+              <label className="block text-sm font-semibold mb-2">Axis</label>
               <input
                 type="number"
-                placeholder="1 to 180"
-                className="w-full border border-gray-300 rounded-md p-2"
+                placeholder="1 - 180"
+                value={leftAxis}
+                onChange={(e) => setLeftAxis(e.target.value)}
+                className="w-full border border-gray-300 rounded-lg px-5 py-3 focus:border-green-600 outline-none"
               />
             </div>
           </div>
         </div>
       </div>
 
-      <div className="flex justify-center">
-        <div className="bg-[#f8f9fa] p-5 rounded-[20px] shadow-md border-1 border-[#e5e5e5] sm:w-[65%] w-full mx-4   my-10  ">
-          <h1 className="text-sm font-semibold text-black  mb-4">ADD</h1>
-
-          <select
-            className="
-       w-full p-4 rounded-[19px] border-2
-       border-black
-        hover:border-[#169D53]
-    outline-none
-    transition-all duration-300
-    cursor-pointer
-    mb-10
-    "
-          >
-            <option>Select</option>
-            <option>0.00</option>
-            <option>+0.25</option>
-            <option>+0.50</option>
-            <option>+0.75</option>
-            <option>+1.00</option>
-            <option>+1.25</option>
-            <option>+1.50</option>
-            <option>+1.75</option>
-            <option>+2.00</option>
-            <option>+2.25</option>
-            <option>+2.50</option>
-            <option>+2.75</option>
-            <option>+3.00</option>
-            <option>+3.25</option>
-            <option>+3.50</option>
-          </select>
+      {/* ADD - Same style as Neworder */}
+      <div className="flex justify-center mt-10 px-4 sm:px-0">
+        <div className="w-full max-w-2xl">
+          <label className="block text-sm font-bold mb-2">ADD</label>
+          <CustomDropdown
+            options={addOptions}
+            value={addValue}
+            onChange={handleDropdownChange(setAddValue)}
+            name="addInput"
+            placeholder="Select ADD"
+          />
         </div>
       </div>
 
+      {/* Submit */}
       <div className="flex justify-center sm:my-9 my-1">
         <button
           type="submit"

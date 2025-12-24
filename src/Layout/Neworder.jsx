@@ -131,7 +131,7 @@ export default function Neworder() {
     totalAmount: "",
     advance: "",
     deliveryDate: "",
-    specialNote: defaultSpecialNote, // ← Pre-filled here
+    specialNote: defaultSpecialNote,
     rightSph: "0.00",
     rightCyl: "0.00",
     rightAxis: "",
@@ -161,7 +161,7 @@ export default function Neworder() {
         deliveryDate: editingOrder.deliveryDate
           ? String(editingOrder.deliveryDate).split("T")[0]
           : "",
-        specialNote: editingOrder.specialNote || defaultSpecialNote, // Use existing or default
+        specialNote: editingOrder.specialNote || defaultSpecialNote,
         rightSph:
           editingOrder.rightEye?.sph != null
             ? String(editingOrder.rightEye.sph)
@@ -215,7 +215,7 @@ export default function Neworder() {
         return isNaN(n) ? null : n;
       };
 
-      // Generate trackingId on client — same format as server
+      // Generate trackingId on client — now using uppercase ORD
       let clientTrackingId = null;
       if (!isEditing) {
         const now = new Date();
@@ -223,7 +223,7 @@ export default function Neworder() {
         const month = String(now.getMonth() + 1).padStart(2, "0");
         const day = String(now.getDate()).padStart(2, "0");
         const randomSuffix = String(Math.floor(Math.random() * 10000)).padStart(4, "0");
-        clientTrackingId = `ord${year}${month}${day}_${randomSuffix}`;
+        clientTrackingId = `ORD${year}${month}${day}_${randomSuffix}`; // ← Changed to ORD
       }
 
       const body = {
@@ -235,7 +235,7 @@ export default function Neworder() {
         advance: adv,
         balance,
         deliveryDate: form.deliveryDate || new Date().toISOString(),
-        specialNote: form.specialNote.trim(), // Save whatever user typed
+        specialNote: form.specialNote.trim(),
         rightEye: {
           sph: parseNum(form.rightSph),
           cyl: parseNum(form.rightCyl),
@@ -414,7 +414,7 @@ export default function Neworder() {
               name="specialNote"
               value={form.specialNote}
               onChange={handleChange}
-              rows={6} // Slightly taller to fit pre-filled text comfortably
+              rows={6}
               placeholder="Any special instructions..."
               className="w-full border-2 border-black rounded-2xl px-5 py-4 text-base font-bold focus:border-green-600 outline-none resize-none"
             />

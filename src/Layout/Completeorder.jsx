@@ -105,8 +105,12 @@ export default function Completeorder() {
 
         // Sort orders: newest first (most recently completed on top)
         allOrders.sort((a, b) => {
-          const dateA = new Date(a.updatedAt || a.createdAt || a.deliveryDate || 0);
-          const dateB = new Date(b.updatedAt || b.createdAt || b.deliveryDate || 0);
+          const dateA = new Date(
+            a.updatedAt || a.createdAt || a.deliveryDate || 0
+          );
+          const dateB = new Date(
+            b.updatedAt || b.createdAt || b.deliveryDate || 0
+          );
           return dateB - dateA; // Descending order
         });
 
@@ -271,75 +275,97 @@ export default function Completeorder() {
           </div>
         </div>
       ) : (
-        orders.map((order, index) => (
-          <div
-            className="flex justify-center items-center mt-10"
-            key={order._id || index}
-          >
-            <div className="bg-black/10 w-full sm:w-[90%] rounded-[20px] p-4 sm:p-5 shadow-md border border-white/40 mb-10">
-              <div className="flex flex-col gap-4 sm:gap-4">
-                <div>
-                  <h1 className="text-[16px] sm:text-[20px] font-bold text-gray-900 break-words">
-                    {order.patientName || order.name || "Unknown"}
-                    {String(order._id || "").startsWith("local-") && (
-                      <span className="ml-2 inline-block bg-yellow-100 text-yellow-800 text-xs px-2 py-0.5 rounded-full font-semibold">
-                        Local
-                      </span>
+        <div className="flex flex-col gap-6 mt-6 pb-20 max-w-5xl mx-auto px-4">
+          {orders.map((order, index) => (
+            <div key={order._id || index} className="flex justify-center">
+              <div className="bg-white w-full rounded-3xl p-6 shadow-xl border border-gray-200 hover:shadow-2xl transition-all">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-5">
+                  <div>
+                    <h3 className="text-2xl font-bold text-gray-900">
+                      {order.patientName || order.name || "Unknown Patient"}
+                      {String(order._id || "").startsWith("local-") && (
+                        <span className="ml-2 inline-block bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded-full font-semibold">
+                          Local
+                        </span>
+                      )}
+                    </h3>
+                    <p className="text-lg text-gray-700 font-medium mt-1">
+                      Tracking ID: {order.trackingId || order._id}
+                    </p>
+                    <p className="text-base text-gray-600 mt-2 flex items-center gap-2">
+                      <FaPhoneAlt className="text-[#169D53]" />
+                      {order.whatsappNumber || "No number"}
+                    </p>
+                    <p className="text-base text-gray-600 mt-1">
+                      Amount:{" "}
+                      {formatCurrency(order?.totalAmount, currencySymbol)}
+                    </p>
+                  </div>
+
+                  <div className="flex gap-6 items-center">
+                    {order?.whatsappNumber ? (
+                      <a
+                        href={`tel:${order.whatsappNumber}`}
+                        className="text-[#007A3F]"
+                        title={`Call ${order.whatsappNumber}`}
+                      >
+                        <FaPhoneAlt
+                          className="cursor-pointer hover:scale-110 transition"
+                          size={28}
+                        />
+                      </a>
+                    ) : (
+                      <FaPhoneAlt
+                        className="text-[#007A3F] cursor-not-allowed opacity-50"
+                        size={28}
+                      />
                     )}
-                  </h1>
-                  <p className="text-[12px] sm:text-[14px] text-gray-700 font-medium break-all">
-                    {order.trackingId || order._id}
-                  </p>
-                  <p className="text-[12px] sm:text-[14px] text-gray-700 break-all">
-                    {order.whatsappNumber}
-                  </p>
-                  <p className="text-[12px] sm:text-[14px] text-gray-700">
-                    Amount: {formatCurrency(order?.totalAmount, currencySymbol)}
-                  </p>
-                </div>
 
-                <div className="flex flex-wrap gap-3 items-center justify-start sm:justify-end">
-                  {order?.whatsappNumber ? (
-                    <a
-                      href={`tel:${order.whatsappNumber}`}
-                      className="text-[#007A3F] flex-shrink-0"
-                      title={`Call ${order.whatsappNumber}`}
-                    >
-                      <FaPhoneAlt className="cursor-pointer" size={20} />
-                    </a>
-                  ) : (
-                    <FaPhoneAlt
-                      className="text-[#007A3F] cursor-not-allowed opacity-50 flex-shrink-0"
-                      size={20}
+                    <MdRemoveRedEye
+                      className="text-[#019AF8] cursor-pointer hover:scale-110 transition"
+                      size={28}
+                      onClick={() => {
+                        setSelectedOrder(order);
+                        setShowSlip(true);
+                      }}
                     />
-                  )}
 
-                  <MdRemoveRedEye
-                    className="text-[#019AF8] cursor-pointer flex-shrink-0"
-                    size={20}
-                    onClick={() => {
-                      setSelectedOrder(order);
-                      setShowSlip(true);
-                    }}
-                  />
+                    <MdEdit
+                      className="text-[#FF9101] cursor-pointer hover:scale-110 transition"
+                      size={28}
+                      onClick={() =>
+                        navigate("/new-order", { state: { order } })
+                      }
+                    />
 
-                  <MdEdit
-                    className="text-[#FF9101] cursor-pointer flex-shrink-0"
-                    size={20}
-                    onClick={() => navigate("/new-order", { state: { order } })}
-                  />
-
-                  {order?.whatsappNumber ? (
-                    <a
-                      href={`https://wa.me/${String(
-                        order.whatsappNumber
-                      ).replace(/[^0-9]/g, "")}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="cursor-pointer flex-shrink-0"
-                      title={`Chat ${order.whatsappNumber} on WhatsApp`}
-                    >
-                      <svg height="20" width="20" viewBox="0 0 32 32">
+                    {order?.whatsappNumber ? (
+                      <a
+                        href={`https://wa.me/${String(
+                          order.whatsappNumber
+                        ).replace(/[^0-9]/g, "")}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="cursor-pointer hover:scale-110 transition"
+                        title={`Chat ${order.whatsappNumber} on WhatsApp`}
+                      >
+                        <svg height="28" width="28" viewBox="0 0 32 32">
+                          <path
+                            fill="#25D366"
+                            d="M16 .667C7.64.667.667 7.64.667 16c0 2.82.735 5.555 2.132 7.963L0 32l8.315-2.745A15.26 15.26 0 0016 31.333C24.36 31.333 31.333 24.36 31.333 16S24.36.667 16 .667z"
+                          />
+                          <path
+                            fill="#FFF"
+                            d="M23.12 19.64c-.34-.17-2.02-1-2.34-1.11-.32-.12-.55-.17-.78.17-.23.34-.88 1.11-1.08 1.34-.2.23-.4.26-.74.09-.34-.17-1.43-.53-2.72-1.69-1-.9-1.69-2.01-1.88-2.35-.2-.34-.02-.52.15-.69.15-.15.34-.4.51-.61.17-.2.23-.34.34-.57.11-.23.06-.43-.03-.6-.09-.17-.78-1.82-1.08-2.49-.28-.63-.57-.54-.78-.55h-.67c-.23 0-.67.09-1.02.43-.34.34-1.34 1.18-1.34 2.85 0 1.67 1.22 3.29 1.39 3.52.17.23 2.38 3.56 5.97 5 .84.36 1.5.59 2.01.76.84.27 1.61.25 2.2.15.67-.1 2.02-.83 2.31-1.62.29-.79.29-1.45.2-1.58-.09-.13-.34-.23-.73-.4z"
+                          />
+                        </svg>
+                      </a>
+                    ) : (
+                      <svg
+                        height="20"
+                        width="20"
+                        viewBox="0 0 32 32"
+                        className="opacity-50 flex-shrink-0"
+                      >
                         <path
                           fill="#25D366"
                           d="M16 .667C7.64.667.667 7.64.667 16c0 2.82.735 5.555 2.132 7.963L0 32l8.315-2.745A15.26 15.26 0 0016 31.333C24.36 31.333 31.333 24.36 31.333 16S24.36.667 16 .667z"
@@ -349,54 +375,38 @@ export default function Completeorder() {
                           d="M23.12 19.64c-.34-.17-2.02-1-2.34-1.11-.32-.12-.55-.17-.78.17-.23.34-.88 1.11-1.08 1.34-.2.23-.4.26-.74.09-.34-.17-1.43-.53-2.72-1.69-1-.9-1.69-2.01-1.88-2.35-.2-.34-.02-.52.15-.69.15-.15.34-.4.51-.61.17-.2.23-.34.34-.57.11-.23.06-.43-.03-.6-.09-.17-.78-1.82-1.08-2.49-.28-.63-.57-.54-.78-.55h-.67c-.23 0-.67.09-1.02.43-.34.34-1.34 1.18-1.34 2.85 0 1.67 1.22 3.29 1.39 3.52.17.23 2.38 3.56 5.97 5 .84.36 1.5.59 2.01.76.84.27 1.61.25 2.2.15.67-.1 2.02-.83 2.31-1.62.29-.79.29-1.45.2-1.58-.09-.13-.34-.23-.73-.4z"
                         />
                       </svg>
-                    </a>
-                  ) : (
-                    <svg
-                      height="20"
-                      width="20"
-                      viewBox="0 0 32 32"
-                      className="opacity-50 flex-shrink-0"
-                    >
-                      <path
-                        fill="#25D366"
-                        d="M16 .667C7.64.667.667 7.64.667 16c0 2.82.735 5.555 2.132 7.963L0 32l8.315-2.745A15.26 15.26 0 0016 31.333C24.36 31.333 31.333 24.36 31.333 16S24.36.667 16 .667z"
-                      />
-                      <path
-                        fill="#FFF"
-                        d="M23.12 19.64c-.34-.17-2.02-1-2.34-1.11-.32-.12-.55-.17-.78.17-.23.34-.88 1.11-1.08 1.34-.2.23-.4.26-.74.09-.34-.17-1.43-.53-2.72-1.69-1-.9-1.69-2.01-1.88-2.35-.2-.34-.02-.52.15-.69.15-.15.34-.4.51-.61.17-.2.23-.34.34-.57.11-.23.06-.43-.03-.6-.09-.17-.78-1.82-1.08-2.49-.28-.63-.57-.54-.78-.55h-.67c-.23 0-.67.09-1.02.43-.34.34-1.34 1.18-1.34 2.85 0 1.67 1.22 3.29 1.39 3.52.17.23 2.38 3.56 5.97 5 .84.36 1.5.59 2.01.76.84.27 1.61.25 2.2.15.67-.1 2.02-.83 2.31-1.62.29-.79.29-1.45.2-1.58-.09-.13-.34-.23-.73-.4z"
-                      />
-                    </svg>
-                  )}
+                    )}
 
-                  <RiDeleteBinLine
-                    className="text-[#FF0000] cursor-pointer"
-                    size={24}
-                    onClick={() => handleDelete(order._id)}
-                  />
+                    <RiDeleteBinLine
+                      className="text-[#FF0000] cursor-pointer hover:scale-110 transition"
+                      size={28}
+                      onClick={() => handleDelete(order._id)}
+                    />
+                  </div>
                 </div>
               </div>
             </div>
+          ))}
+        </div>
+      )}
 
-            {showSlip && (
-              <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex justify-center items-center z-50">
-                <div className="bg-white max-h-[90vh] w-[90%]  rounded-xl shadow-xl overflow-y-auto relative p-4">
-                  <button
-                    onClick={() => setShowSlip(false)}
-                    className="absolute top-3 right-3 text-black text-[20px] cursor-pointer"
-                  >
-                    ✕
-                  </button>
+      {showSlip && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex justify-center items-center z-50">
+          <div className="bg-white max-h-[90vh] w-[90%]  rounded-xl shadow-xl overflow-y-auto relative p-4">
+            <button
+              onClick={() => setShowSlip(false)}
+              className="absolute top-3 right-3 text-black text-[20px] cursor-pointer"
+            >
+              ✕
+            </button>
 
-                  {selectedOrder ? (
-                    <Customerorder order={selectedOrder} />
-                  ) : (
-                    <div className="p-6 text-center">No order selected</div>
-                  )}
-                </div>
-              </div>
+            {selectedOrder ? (
+              <Customerorder order={selectedOrder} />
+            ) : (
+              <div className="p-6 text-center">No order selected</div>
             )}
           </div>
-        ))
+        </div>
       )}
     </div>
   );

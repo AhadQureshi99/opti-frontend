@@ -8,6 +8,7 @@ export default function CustomDropdown({
   name = "",
   placeholder = "Select",
   isScrollable = false,
+  className = "",
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
@@ -84,7 +85,7 @@ export default function CustomDropdown({
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full border-2 border-gray-400 rounded-[25px] text-black py-4 sm:py-5 px-4 sm:px-5 text-base bg-white cursor-pointer flex items-center justify-between transition-all duration-300 hover:border-green-600 focus:border-green-600 focus:shadow-md"
+        className={`w-full border-2 border-gray-400 rounded-[25px] text-black py-4 sm:py-5 px-4 sm:px-5 text-base bg-white cursor-pointer flex items-center justify-between transition-all duration-300 hover:border-green-600 focus:border-green-600 focus:shadow-md ${className}`}
       >
         <span className="flex-1 text-left">{value || placeholder}</span>
         <RiArrowDropDownLine

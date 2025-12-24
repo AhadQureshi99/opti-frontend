@@ -11,7 +11,7 @@ export default function DonutCard({ label, value, total, color }) {
       className="
         bg-white rounded-xl border-[#007A3F] border-2 shadow-md p-4
         flex flex-col items-center 
-        w-[10%] 
+      
         md:w-[120px] 
         sm:w-[150px] 
         w-[40%] 

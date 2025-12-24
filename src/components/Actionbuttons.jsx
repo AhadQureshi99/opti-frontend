@@ -52,7 +52,7 @@ export default function Actionbuttons() {
         <span>Complete Order</span>
       </Link>
 
-      {/* Search Record */}
+      {/* Search Record - always visible */}
       <Link
         to="/search-record"
         className="bg-[#169D53] text-white md:text-lg text-sm font-semibold 
@@ -82,21 +82,23 @@ export default function Actionbuttons() {
             text-center py-4 px-3 md:py-6 md:px-5 rounded-xl whitespace-nowrap
             flex flex-col items-center justify-center gap-2 transition-all duration-300 hover:bg-green-700"
         >
-          <FaArrowTrendUp className="text-3xl md:text-4xl" />
-          <span>Sale Record</span>
+          <AiOutlineBarChart className="text-3xl md:text-4xl" />
+          <span>Sales Record</span>
         </Link>
       )}
 
-      {/* My Shop */}
-      <Link
-        to="/mynewshop"
-        className="bg-[#169D53] text-white md:text-lg text-sm font-semibold 
-          text-center py-4 px-3 md:py-6 md:px-5 rounded-xl whitespace-nowrap
-          flex flex-col items-center justify-center gap-2 transition-all duration-300 hover:bg-green-700"
-      >
-        <AiOutlineShop className="text-3xl md:text-4xl" />
-        <span>My Shop</span>
-      </Link>
+      {/* My Shop - HIDDEN FOR SUB-USERS */}
+      {!isSubUser && (
+        <Link
+          to="/my-shop"
+          className="bg-[#169D53] text-white md:text-lg text-sm font-semibold 
+            text-center py-4 px-3 md:py-6 md:px-5 rounded-xl whitespace-nowrap
+            flex flex-col items-center justify-center gap-2 transition-all duration-300 hover:bg-green-700"
+        >
+          <AiOutlineShop className="text-3xl md:text-4xl" />
+          <span>My Shop</span>
+        </Link>
+      )}
 
       {/* Transpose Calculator */}
       <Link

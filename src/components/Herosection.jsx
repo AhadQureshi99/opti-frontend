@@ -26,11 +26,16 @@ export default function Herosection({ profile }) {
         <div className="bg-[#169D53] rounded-[20px] p-5 pb-8">
           {/* TOP SECTION */}
           <div className="flex items-start gap-4">
-            <div className="bg-white rounded-[15px] w-[70px] h-[70px] overflow-hidden flex items-center justify-center flex-shrink-0">
+            <div className="bg-white rounded-full w-[70px] h-[70px] overflow-hidden flex items-center justify-center flex-shrink-0 border-2 border-[#169D53]">
               <img
                 src={imageSrc}
                 alt={displayName}
                 className="w-full h-full object-cover"
+                style={{
+                  aspectRatio: "1/1",
+                  minWidth: "70px",
+                  minHeight: "70px",
+                }}
               />
             </div>
 
@@ -86,11 +91,16 @@ export default function Herosection({ profile }) {
         <div className="p-[30px] border-4 border-[#169D53] rounded-[15px] bg-white">
           {/* Top Profile Section */}
           <div className="flex flex-col sm:flex-row items-center sm:items-start gap-[20px] mb-[20px]">
-            <div className="flex-shrink-0 bg-[#169D53] rounded-full w-[120px] h-[120px] flex items-center justify-center overflow-hidden">
+            <div className="flex-shrink-0 bg-[#169D53] rounded-full w-[120px] h-[120px] flex items-center justify-center overflow-hidden border-4 border-[#169D53]">
               <img
                 src={imageSrc}
                 alt={displayName}
-                className="w-28 h-28 object-cover"
+                className="w-full h-full object-cover"
+                style={{
+                  aspectRatio: "1/1",
+                  minWidth: "120px",
+                  minHeight: "120px",
+                }}
               />
             </div>
 

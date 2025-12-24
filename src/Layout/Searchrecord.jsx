@@ -116,11 +116,19 @@ export default function Searchrecord() {
             list = Array.isArray(data) ? data : data.orders || data;
           } else {
             const [pending, completed] = await Promise.all([
-              get("/api/orders/pending", { cacheKey: "orders" }).catch(() => []),
-              get("/api/orders/completed", { cacheKey: "orders" }).catch(() => []),
+              get("/api/orders/pending", { cacheKey: "orders" }).catch(
+                () => []
+              ),
+              get("/api/orders/completed", { cacheKey: "orders" }).catch(
+                () => []
+              ),
             ]);
-            const p = Array.isArray(pending) ? pending : pending.pending || pending || [];
-            const c = Array.isArray(completed) ? completed : completed.completed || completed || [];
+            const p = Array.isArray(pending)
+              ? pending
+              : pending.pending || pending || [];
+            const c = Array.isArray(completed)
+              ? completed
+              : completed.completed || completed || [];
             list = [...p, ...c];
           }
         } catch (e) {
@@ -134,7 +142,11 @@ export default function Searchrecord() {
           setResults(
             list.filter((o) => {
               const name = (o.patientName || "").toLowerCase();
-              const phone = (o.whatsappNumber || o.whatsapp || "").toLowerCase();
+              const phone = (
+                o.whatsappNumber ||
+                o.whatsapp ||
+                ""
+              ).toLowerCase();
               const id = (o._id || "").toString().toLowerCase();
               const tracking = (o.trackingId || "").toString().toLowerCase();
               return (
@@ -172,7 +184,7 @@ export default function Searchrecord() {
   };
 
   return (
-    <div className="bg-[linear-gradient(135deg,#169D53_0%,#128a43_100%)] w-full h-full min-h-screen">
+    <div className="w-full bg-[white] h-screen ">
       <Link
         to="/home-page"
         className="relative flex items-center justify-center px-10 pt-10 mb-10"
@@ -180,14 +192,11 @@ export default function Searchrecord() {
         <FaArrowLeft
           className="
             absolute left-10 top-10
-            w-12 h-12
-            text-[#169D53]
-            bg-[rgba(255,255,255,0.9)]
-            p-4
-            rounded-[12px]
+            w-7 h-6
+            text-black
             cursor-pointer
             transition-all duration-300
-            hover:bg-white
+            hover:text-green-600
             hover:-translate-x-1
           "
         />
@@ -195,7 +204,7 @@ export default function Searchrecord() {
 
       <div className="flex justify-center items-center mt-10">
         <div className="bg-white/95 w-[90%] rounded-[25px] text-center sm:p-10 p-6 shadow-[0_20px_40px_rgba(0,0,0,0.1)]">
-          <h1 className="font-extrabold text-[32px] bg-gradient-to-r from-[#169D53] to-[#128a43] bg-clip-text text-transparent">
+          <h1 className="font-bold text-[25px] text-[#007A3F] text-center">
             Search Records
           </h1>
 
@@ -244,7 +253,7 @@ export default function Searchrecord() {
                 ${
                   !query.trim()
                     ? "bg-gray-300 text-gray-600 cursor-not-allowed"
-                    : "bg-gradient-to-r from-[#169D53] to-[#128a43] text-white hover:shadow-xl hover:scale-105"
+                    : "bg-[#169D53] text-white hover:bg-green-600"
                 }
               `}
             >
@@ -255,8 +264,9 @@ export default function Searchrecord() {
 
           <div className="mt-8 bg-[rgba(22,157,83,0.05)] border-l-4 border-l-[#169D53] rounded-r-lg p-5 max-w-3xl mx-auto">
             <p className="text-[#718096] text-[15px]">
-              <strong className="font-semibold">Search Tips:</strong>{" "}
-              You can search by patient name, tracking ID (e.g., ORD20241225_1234), or WhatsApp number.
+              <strong className="font-semibold">Search Tips:</strong> You can
+              search by patient name, tracking ID (e.g., ORD20241225_1234), or
+              WhatsApp number.
             </p>
           </div>
         </div>
@@ -264,11 +274,8 @@ export default function Searchrecord() {
 
       <div className="mt-10 px-4">
         <div className="flex justify-between items-center max-w-5xl mx-auto mb-6">
-          <h2 className="text-white font-bold text-2xl">Search Results</h2>
-          <div
-            className="text-white font-bold px-6 py-2 rounded-full shadow-lg"
-            style={{ background: "linear-gradient(135deg, #169D53, #128a43)" }}
-          >
+          <h2 className="text-[#007A3F] font-bold text-2xl">Search Results</h2>
+          <div className="text-white font-bold px-6 py-2 rounded-full shadow-lg bg-[#169D53]">
             {loading
               ? "Searching..."
               : searched
@@ -278,7 +285,9 @@ export default function Searchrecord() {
         </div>
 
         {loading && (
-          <div className="text-center text-white text-lg mt-10">Loading results...</div>
+          <div className="text-center text-[#007A3F] text-lg mt-10">
+            Loading results...
+          </div>
         )}
 
         {!loading && (!searched || (searched && results.length === 0)) && (
@@ -304,7 +313,7 @@ export default function Searchrecord() {
           <div className="flex flex-col gap-6 mt-6 pb-20 max-w-5xl mx-auto">
             {results.map((order, index) => (
               <div key={order._id || index} className="flex justify-center">
-                <div className="bg-white/30 backdrop-blur-sm w-full rounded-3xl p-6 shadow-xl border border-white/40 hover:shadow-2xl transition-all">
+                <div className="bg-white w-full rounded-3xl p-6 shadow-xl border border-gray-200 hover:shadow-2xl transition-all">
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-5">
                     <div>
                       <h3 className="text-2xl font-bold text-gray-900">
