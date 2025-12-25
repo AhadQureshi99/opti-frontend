@@ -5,27 +5,67 @@ import Customerorder from "./Customerorder";
 import { get } from "../utils/api";
 import { LuPrinter } from "react-icons/lu";
 import { BiSave } from "react-icons/bi";
+import { getCachedData, setCachedData, prefetchData } from "../utils/dataCache";
+import { preloadImage } from "../utils/imageCache";
 
 export default function Pendingorderslip() {
   const { id } = useParams();
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // Preload the OptiSlip logo
+  useEffect(() => {
+    preloadImage("/Optislipimage.png").catch(() => {
+      console.debug("Failed to preload logo");
+    });
+  }, []);
+
   useEffect(() => {
     let mounted = true;
+
     async function load() {
       if (!id) return setLoading(false);
+
+      // Check cache first
+      const cacheKey = `order_${id}`;
+      const cached = getCachedData(cacheKey);
+
+      if (cached) {
+        setOrder(cached);
+        setLoading(false);
+        // Still fetch in background to update cache
+        fetchInBackground(cacheKey);
+        return;
+      }
+
+      // Fetch with prefetch utility
       try {
         setLoading(true);
-        const req = await get(`/api/orders/${id}`);
+        const data = await prefetchData(
+          cacheKey,
+          () => get(`/api/orders/${id}`),
+          10 * 60 * 1000 // Cache for 10 minutes
+        );
+
         if (!mounted) return;
-        setOrder(req);
+        setOrder(data);
       } catch (e) {
         console.error("Failed to load order", e);
       } finally {
         if (mounted) setLoading(false);
       }
     }
+
+    async function fetchInBackground(cacheKey) {
+      try {
+        const data = await get(`/api/orders/${id}`);
+        setCachedData(cacheKey, data, 10 * 60 * 1000);
+        if (mounted) setOrder(data);
+      } catch (e) {
+        console.debug("Background fetch failed", e);
+      }
+    }
+
     load();
     return () => {
       mounted = false;

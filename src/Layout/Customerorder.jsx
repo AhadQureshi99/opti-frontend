@@ -8,6 +8,7 @@ import { jsPDF } from "jspdf";
 import html2canvas from "html2canvas";
 import { useToast } from "../components/ToastProvider";
 import { put, get } from "../utils/api";
+import { getCachedData, setCachedData, prefetchData } from "../utils/dataCache";
 
 export default function Customerorder({ order = null }) {
   const toast = useToast();
@@ -18,17 +19,53 @@ export default function Customerorder({ order = null }) {
     let mounted = true;
 
     const fetchShopProfile = async () => {
+      const cacheKey = "shop_profile";
+
+      // Check cache first
+      const cached = getCachedData(cacheKey);
+      if (cached) {
+        setShopDetails(cached);
+        // Still fetch in background to keep cache fresh
+        fetchInBackground();
+        return;
+      }
+
+      // Fetch with caching
+      try {
+        const data = await prefetchData(
+          cacheKey,
+          async () => {
+            try {
+              const profileData = await get("/api/user/profile");
+              return profileData?.user || profileData || {};
+            } catch {
+              const publicData = await get("/api/user/public-profile");
+              return publicData || {};
+            }
+          },
+          15 * 60 * 1000 // Cache for 15 minutes
+        );
+
+        if (!mounted) return;
+        setShopDetails(data);
+      } catch {
+        toast.addToast("Failed to load shop details", { type: "error" });
+      }
+    };
+
+    const fetchInBackground = async () => {
       try {
         const data = await get("/api/user/profile");
-        if (!mounted) return;
-        setShopDetails(data?.user || data || {});
+        const shopData = data?.user || data || {};
+        setCachedData("shop_profile", shopData, 15 * 60 * 1000);
+        if (mounted) setShopDetails(shopData);
       } catch {
         try {
           const data = await get("/api/user/public-profile");
-          if (!mounted) return;
-          setShopDetails(data || {}); // ← public-profile returns flat object
-        } catch {
-          toast.addToast("Failed to load shop details", { type: "error" });
+          setCachedData("shop_profile", data || {}, 15 * 60 * 1000);
+          if (mounted) setShopDetails(data || {});
+        } catch (e) {
+          console.debug("Background shop fetch failed", e);
         }
       }
     };
@@ -189,33 +226,23 @@ export default function Customerorder({ order = null }) {
             </thead>
             <tbody>
               <tr>
-                <td className="text-left">
-                  <span className="inline-block w-10">SPH:</span>
-                  {format(order?.leftEye?.sph)}
-                </td>
+                <td className="text-left">SPH:{format(order?.leftEye?.sph)}</td>
                 <td className="text-right">
-                  <span className="inline-block w-10">SPH:</span>
-                  {format(order?.rightEye?.sph)}
+                  SPH:{format(order?.rightEye?.sph)}
+                </td>
+              </tr>
+              <tr>
+                <td className="text-left">CYL:{format(order?.leftEye?.cyl)}</td>
+                <td className="text-right">
+                  CYL:{format(order?.rightEye?.cyl)}
                 </td>
               </tr>
               <tr>
                 <td className="text-left">
-                  <span className="inline-block w-10">CYL:</span>
-                  {format(order?.leftEye?.cyl)}
+                  AXIS:{order?.leftEye?.axis ?? "-"}
                 </td>
                 <td className="text-right">
-                  <span className="inline-block w-10">CYL:</span>
-                  {format(order?.rightEye?.cyl)}
-                </td>
-              </tr>
-              <tr>
-                <td className="text-left">
-                  <span className="inline-block w-10">AXIS:</span>
-                  {order?.leftEye?.axis ?? "-"}
-                </td>
-                <td className="text-right">
-                  <span className="inline-block w-10">AXIS:</span>
-                  {order?.rightEye?.axis ?? "-"}
+                  AXIS:{order?.rightEye?.axis ?? "-"}
                 </td>
               </tr>
             </tbody>

@@ -123,23 +123,23 @@ export default function Salesrecord() {
         : expensesRes?.expenses || [];
 
       // Backend already filters by date range, but we'll double-check with proper date handling
-      const startDate = new Date(s);
-      startDate.setHours(0, 0, 0, 0);
-      const endDate = new Date(e);
-      endDate.setHours(23, 59, 59, 999);
+      const filterStartDate = new Date(s);
+      filterStartDate.setHours(0, 0, 0, 0);
+      const filterEndDate = new Date(e);
+      filterEndDate.setHours(23, 59, 59, 999);
 
       const ordersInRange = allOrders.filter((o) => {
         const d = new Date(
           o.createdAt || o.deliveryDate || o.updatedAt || o.createdAt
         );
-        return d >= startDate && d <= endDate;
+        return d >= filterStartDate && d <= filterEndDate;
       });
 
       const expensesInRange = allExpenses.filter((exp) => {
         const d = new Date(
           exp.date || exp.createdAt || exp.updatedAt || exp.createdAt
         );
-        return d >= startDate && d <= endDate;
+        return d >= filterStartDate && d <= filterEndDate;
       });
 
       const days = buildDayArray(s, e);
@@ -538,32 +538,38 @@ export default function Salesrecord() {
                 <th className="px-4 py-2 text-right text-sm font-medium text-gray-700 border border-gray-300">
                   Cash Paid Out
                 </th>
-                <th className="px-4 py-2 text-right text-sm font-medium text-gray-700 border border-gray-300">
-                  Cash in Hand
-                </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y">
               {(() => {
                 const combined = [
-                  ...(ordersList || []).map((o) => ({
-                    id: o._id,
-                    date: new Date(
-                      o.createdAt ||
-                        o.deliveryDate ||
-                        o.updatedAt ||
-                        o.createdAt
-                    ),
-                    type: "Sale",
-                    ref: o.trackingId || o._id,
-                    description: "advance",
-                    category: "-",
-                    advance: Number(o.advance) || 0,
-                    totalAmount: Number(o.totalAmount) || 0,
-                    balance: Number(o.balance) || 0,
-                    cashReceived: Number(o.advance) || 0,
-                    delivered: o.status === "delivered",
-                  })),
+                  ...(ordersList || []).map((o) => {
+                    console.log(
+                      "Order:",
+                      o._id,
+                      "isDirectRecord:",
+                      o.isDirectRecord
+                    );
+                    return {
+                      id: o._id,
+                      date: new Date(
+                        o.createdAt ||
+                          o.deliveryDate ||
+                          o.updatedAt ||
+                          o.createdAt
+                      ),
+                      type: "Sale",
+                      ref: o.trackingId || o._id,
+                      description:
+                        o.isDirectRecord === true ? "balance" : "advance",
+                      category: "-",
+                      advance: Number(o.advance) || 0,
+                      totalAmount: Number(o.totalAmount) || 0,
+                      balance: Number(o.balance) || 0,
+                      cashReceived: o.isDirectRecord === true ? Number(o.totalAmount) || 0 : Number(o.advance) || 0,
+                      delivered: o.status === "delivered",
+                    };
+                  }),
                   ...(ordersList || [])
                     .filter((o) => o.status === "delivered")
                     .map((o) => ({
@@ -584,7 +590,7 @@ export default function Salesrecord() {
                       e.date || e.createdAt || e.updatedAt || e.createdAt
                     ),
                     type: "Expense",
-                    ref: e._id,
+                    ref: "-",
                     description: e.description || "N/A",
                     category: e.category || "N/A",
                     amount: Number(e.amount) || 0,
@@ -664,51 +670,39 @@ export default function Salesrecord() {
                           {cashPaidOut}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-sm text-right font-semibold border border-gray-300">
-                        <span className="text-blue-600">{cashInHand}</span>
-                      </td>
                     </tr>
                   );
                 });
               })()}
               {/* Summary row for total sales */}
               <tr className="bg-gray-100 font-bold">
-                <td
-                  colSpan={4}
-                  className="px-4 py-3 text-right text-sm text-gray-700 border border-gray-300"
-                >
+                <td colSpan={6} className="border border-gray-300"></td>
+                <td className="px-4 py-3 text-right text-sm text-gray-700 border border-gray-300">
                   Total Sales:
                 </td>
                 <td className="px-4 py-3 text-sm text-right text-green-700 border border-gray-300">
                   {formatCurrency(salesTotal)}
                 </td>
-                <td colSpan={4} className="border border-gray-300"></td>
               </tr>
               {/* Summary row for total expenses */}
               <tr className="bg-gray-100 font-bold">
-                <td
-                  colSpan={4}
-                  className="px-4 py-3 text-right text-sm text-gray-700 border border-gray-300"
-                >
+                <td colSpan={6} className="border border-gray-300"></td>
+                <td className="px-4 py-3 text-right text-sm text-gray-700 border border-gray-300">
                   Total Expenses:
                 </td>
                 <td className="px-4 py-3 text-sm text-right text-red-700 border border-gray-300">
                   {formatCurrency(expenseTotal)}
                 </td>
-                <td colSpan={4} className="border border-gray-300"></td>
               </tr>
               {/* Summary row for net amount */}
               <tr className="bg-gray-100 font-bold">
-                <td
-                  colSpan={4}
-                  className="px-4 py-3 text-right text-sm text-gray-700 border border-gray-300"
-                >
+                <td colSpan={6} className="border border-gray-300"></td>
+                <td className="px-4 py-3 text-right text-sm text-gray-700 border border-gray-300">
                   Current Cash:
                 </td>
                 <td className="px-4 py-3 text-sm text-right text-blue-700 border border-gray-300">
                   {finalCashInHand}
                 </td>
-                <td colSpan={4} className="border border-gray-300"></td>
               </tr>
             </tbody>
           </table>

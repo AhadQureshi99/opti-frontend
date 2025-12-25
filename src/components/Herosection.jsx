@@ -1,8 +1,12 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { FaWhatsapp, FaFacebookF, FaInstagram, FaGlobe } from "react-icons/fa";
 import { FaLocationDot } from "react-icons/fa6";
+import { preloadImage, isImageCached } from "../utils/imageCache";
 
 export default function Herosection({ profile }) {
+  const [imageLoaded, setImageLoaded] = useState(false);
+  const [imageError, setImageError] = useState(false);
+
   const p = profile || {};
   const base = (
     import.meta.env.VITE_API_BASE || "https://api.optislip.com"
@@ -13,6 +17,24 @@ export default function Herosection({ profile }) {
       ? p.image
       : base + "/" + p.image.replace(/^\//, "")
     : "/Optislipimage.png";
+
+  // Preload and cache the image (but show immediately)
+  useEffect(() => {
+    // Show image immediately
+    setImageLoaded(true);
+
+    // Preload in background for caching
+    if (!isImageCached(imageSrc)) {
+      preloadImage(imageSrc)
+        .then(() => {
+          setImageError(false);
+        })
+        .catch((err) => {
+          console.debug("Image preload failed:", err);
+          setImageError(true);
+        });
+    }
+  }, [imageSrc]);
 
   const displayName = p.shopName || p.username || p.email || "OPTI SLIP";
   const displayAddress =
@@ -35,6 +57,14 @@ export default function Herosection({ profile }) {
                   aspectRatio: "1/1",
                   minWidth: "70px",
                   minHeight: "70px",
+                }}
+                loading="eager"
+                onError={(e) => {
+                  console.debug("Image failed to load:", imageSrc);
+                  e.target.onerror = null;
+                  if (imageSrc !== "/Optislipimage.png") {
+                    e.target.src = "/Optislipimage.png";
+                  }
                 }}
               />
             </div>
@@ -100,6 +130,14 @@ export default function Herosection({ profile }) {
                   aspectRatio: "1/1",
                   minWidth: "120px",
                   minHeight: "120px",
+                }}
+                loading="eager"
+                onError={(e) => {
+                  console.debug("Image failed to load:", imageSrc);
+                  e.target.onerror = null;
+                  if (imageSrc !== "/Optislipimage.png") {
+                    e.target.src = "/Optislipimage.png";
+                  }
                 }}
               />
             </div>

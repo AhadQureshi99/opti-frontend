@@ -290,7 +290,9 @@ export default function Mynewshop() {
           username: u.username || u.email || "",
         }));
         if (u.image) {
-          const base = import.meta.env.VITE_API_BASE?.replace(/\/api\/?$/, "") || "https://api.optislip.com";
+          const base =
+            import.meta.env.VITE_API_BASE?.replace(/\/api\/?$/, "") ||
+            "https://api.optislip.com";
           setImage(base + "/" + u.image.replace(/^\//, ""));
         }
       })
@@ -303,7 +305,9 @@ export default function Mynewshop() {
       })
       .catch(() => {});
 
-    return () => { mounted = false; };
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   async function uploadImage(file) {
@@ -319,6 +323,10 @@ export default function Mynewshop() {
       });
       if (!res.ok) throw await res.text();
       const data = await res.json();
+
+      // Update the image preview immediately
+      setImage(URL.createObjectURL(file));
+
       toast.addToast(data.message || "Image uploaded", { type: "success" });
     } catch (e) {
       toast.addToast("Image upload failed", { type: "error" });
@@ -328,6 +336,7 @@ export default function Mynewshop() {
   const handleImage = (e) => {
     const file = e.target.files[0];
     if (file) {
+      // Show preview immediately
       setImage(URL.createObjectURL(file));
       uploadImage(file);
     }
@@ -371,7 +380,12 @@ export default function Mynewshop() {
       const data = await post("/api/user/sub-users", body);
       toast.addToast(data.message || "Sub-user added", { type: "success" });
       setSubUsers((s) => [...s, data.subUser]);
-      setSubUserForm({ subUsername: "", email: "", password: "", phoneNumber: "" });
+      setSubUserForm({
+        subUsername: "",
+        email: "",
+        password: "",
+        phoneNumber: "",
+      });
     } catch (err) {
       toast.addToast(err?.body?.message || "Add failed", { type: "error" });
     } finally {
@@ -398,9 +412,16 @@ export default function Mynewshop() {
       if (!body.password) delete body.password;
       const data = await put(`/api/user/sub-users/${editingSubUser._id}`, body);
       toast.addToast(data.message || "Sub-user updated", { type: "success" });
-      setSubUsers((s) => s.map((u) => (u._id === editingSubUser._id ? data.subUser : u)));
+      setSubUsers((s) =>
+        s.map((u) => (u._id === editingSubUser._id ? data.subUser : u))
+      );
       setEditingSubUser(null);
-      setSubUserForm({ subUsername: "", email: "", password: "", phoneNumber: "" });
+      setSubUserForm({
+        subUsername: "",
+        email: "",
+        password: "",
+        phoneNumber: "",
+      });
     } catch (err) {
       toast.addToast(err?.body?.message || "Update failed", { type: "error" });
     } finally {
@@ -409,7 +430,8 @@ export default function Mynewshop() {
   }
 
   async function handleDeleteSubUser(id) {
-    if (!window.confirm("Are you sure you want to delete this sub-user?")) return;
+    if (!window.confirm("Are you sure you want to delete this sub-user?"))
+      return;
     try {
       await del(`/api/user/sub-users/${id}`);
       toast.addToast("Sub-user deleted", { type: "success" });
@@ -441,13 +463,25 @@ export default function Mynewshop() {
           className={`w-36 h-36 rounded-full border-[3px] border-green-600 flex justify-center items-center bg-[#2D2D2D] text-white ${
             isSubUser ? "cursor-not-allowed opacity-70" : "cursor-pointer"
           } overflow-hidden`}
-          title={isSubUser ? "Sub-users cannot change shop image" : "Upload image"}
+          title={
+            isSubUser ? "Sub-users cannot change shop image" : "Upload image"
+          }
         >
           {image ? (
-            <img src={image} alt="preview" className="w-full h-full object-cover" />
+            <img
+              src={image}
+              alt="preview"
+              className="w-full h-full object-cover"
+            />
           ) : (
             <span className="text-center text-[#FFFFFF] underline">
-              {isSubUser ? "Image (read-only)" : <>Upload <br /> Image</>}
+              {isSubUser ? (
+                "Image (read-only)"
+              ) : (
+                <>
+                  Upload <br /> Image
+                </>
+              )}
             </span>
           )}
         </label>
@@ -465,13 +499,17 @@ export default function Mynewshop() {
         <div className="w-full max-w-2xl space-y-6">
           {/* Shop Name */}
           <div>
-            <label className="text-sm font-medium text-gray-700">Shop Name</label>
+            <label className="text-sm font-medium text-gray-700">
+              Shop Name
+            </label>
             <input
               type="text"
               placeholder="eg. Opti Slip"
               className="w-full mt-1 border rounded-xl p-4 outline-none text-[15px]"
               value={form.shopName}
-              onChange={(e) => setForm((s) => ({ ...s, shopName: e.target.value }))}
+              onChange={(e) =>
+                setForm((s) => ({ ...s, shopName: e.target.value }))
+              }
             />
           </div>
 
@@ -483,20 +521,35 @@ export default function Mynewshop() {
               placeholder="eg. Civic Center, Mountain View, CA, United States, California"
               className="w-full mt-1 border rounded-xl p-4 outline-none text-[15px]"
               value={form.address}
-              onChange={(e) => setForm((s) => ({ ...s, address: e.target.value }))}
+              onChange={(e) =>
+                setForm((s) => ({ ...s, address: e.target.value }))
+              }
             />
           </div>
 
           {/* Phone Number */}
           <div>
-            <label className="text-sm font-medium text-gray-700">Phone Number</label>
+            <label className="text-sm font-medium text-gray-700">
+              Phone Number
+            </label>
             <div className="flex mt-1 gap-2 items-center">
               <CustomDropdown
-                options={countryCodes.map((c) => `${c.flag} ${c.code} ${c.name}`)}
-                value={countryCodes.find((c) => c.code === form.countryCode)?.flag + " " + form.countryCode || "+1"}
+                options={countryCodes.map(
+                  (c) => `${c.flag} ${c.code} ${c.name}`
+                )}
+                value={
+                  countryCodes.find((c) => c.code === form.countryCode)?.flag +
+                    " " +
+                    form.countryCode || "+1"
+                }
                 onChange={(e) => {
-                  const selected = countryCodes.find((c) => `${c.flag} ${c.code} ${c.name}` === e.target.value);
-                  setForm((s) => ({ ...s, countryCode: selected?.code || "+1" }));
+                  const selected = countryCodes.find(
+                    (c) => `${c.flag} ${c.code} ${c.name}` === e.target.value
+                  );
+                  setForm((s) => ({
+                    ...s,
+                    countryCode: selected?.code || "+1",
+                  }));
                 }}
                 name="countryCode"
                 placeholder="+1"
@@ -520,14 +573,27 @@ export default function Mynewshop() {
 
           {/* WhatsApp Number */}
           <div>
-            <label className="text-sm font-medium text-gray-700">WhatsApp Number</label>
+            <label className="text-sm font-medium text-gray-700">
+              WhatsApp Number
+            </label>
             <div className="flex mt-1 gap-2 items-center">
               <CustomDropdown
-                options={countryCodes.map((c) => `${c.flag} ${c.code} ${c.name}`)}
-                value={countryCodes.find((c) => c.code === form.whatsappCode)?.flag + " " + form.whatsappCode || "+1"}
+                options={countryCodes.map(
+                  (c) => `${c.flag} ${c.code} ${c.name}`
+                )}
+                value={
+                  countryCodes.find((c) => c.code === form.whatsappCode)?.flag +
+                    " " +
+                    form.whatsappCode || "+1"
+                }
                 onChange={(e) => {
-                  const selected = countryCodes.find((c) => `${c.flag} ${c.code} ${c.name}` === e.target.value);
-                  setForm((s) => ({ ...s, whatsappCode: selected?.code || "+1" }));
+                  const selected = countryCodes.find(
+                    (c) => `${c.flag} ${c.code} ${c.name}` === e.target.value
+                  );
+                  setForm((s) => ({
+                    ...s,
+                    whatsappCode: selected?.code || "+1",
+                  }));
                 }}
                 name="whatsappCode"
                 placeholder="+1"
@@ -551,33 +617,45 @@ export default function Mynewshop() {
 
           {/* Username */}
           <div>
-            <label className="text-sm font-medium text-gray-700">User Name</label>
+            <label className="text-sm font-medium text-gray-700">
+              User Name
+            </label>
             <input
               type="text"
               placeholder="eg. opti_slip"
               className="w-full mt-1 border rounded-xl p-4 outline-none text-[15px]"
               value={form.username}
-              onChange={(e) => setForm((s) => ({ ...s, username: e.target.value }))}
+              onChange={(e) =>
+                setForm((s) => ({ ...s, username: e.target.value }))
+              }
             />
           </div>
 
           {/* Password */}
           <div>
-            <label className="text-sm font-medium text-gray-700">Password</label>
+            <label className="text-sm font-medium text-gray-700">
+              Password
+            </label>
             <div className="relative mt-1">
               <input
                 type={showMainPassword ? "text" : "password"}
                 placeholder="********"
                 className="w-full border rounded-xl p-4 pr-12 outline-none text-[15px]"
                 value={form.password}
-                onChange={(e) => setForm((s) => ({ ...s, password: e.target.value }))}
+                onChange={(e) =>
+                  setForm((s) => ({ ...s, password: e.target.value }))
+                }
               />
               <button
                 type="button"
                 onClick={() => setShowMainPassword(!showMainPassword)}
                 className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-600 hover:text-gray-800"
               >
-                {showMainPassword ? <FaEyeSlash size={20} /> : <FaEye size={20} />}
+                {showMainPassword ? (
+                  <FaEyeSlash size={20} />
+                ) : (
+                  <FaEye size={20} />
+                )}
               </button>
             </div>
           </div>
@@ -590,7 +668,11 @@ export default function Mynewshop() {
               }`}
               onClick={isSubUser ? (e) => e.preventDefault() : handleSave}
               disabled={loading || isSubUser}
-              title={isSubUser ? "Sub-users cannot modify shop profile" : "Save Changes"}
+              title={
+                isSubUser
+                  ? "Sub-users cannot modify shop profile"
+                  : "Save Changes"
+              }
             >
               {isSubUser ? "View Only" : loading ? "Saving..." : "Save Changes"}
             </button>
@@ -614,46 +696,70 @@ export default function Mynewshop() {
               <div className="border border-[#007A3F] rounded-xl p-5 grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Sub User Form fields */}
                 <div>
-                  <label className="text-sm font-medium text-gray-700">Sub User Name</label>
+                  <label className="text-sm font-medium text-gray-700">
+                    Sub User Name
+                  </label>
                   <input
                     type="text"
                     placeholder="user_xzy"
                     className="w-full mt-1 border rounded-xl p-3 outline-none"
                     value={subUserForm.subUsername}
-                    onChange={(e) => setSubUserForm((s) => ({ ...s, subUsername: e.target.value }))}
+                    onChange={(e) =>
+                      setSubUserForm((s) => ({
+                        ...s,
+                        subUsername: e.target.value,
+                      }))
+                    }
                   />
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-gray-700">Email</label>
+                  <label className="text-sm font-medium text-gray-700">
+                    Email
+                  </label>
                   <input
                     type="email"
                     placeholder="user@email.com"
                     className="w-full mt-1 border rounded-xl p-3 outline-none"
                     value={subUserForm.email}
-                    onChange={(e) => setSubUserForm((s) => ({ ...s, email: e.target.value }))}
+                    onChange={(e) =>
+                      setSubUserForm((s) => ({ ...s, email: e.target.value }))
+                    }
                   />
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-gray-700">Password</label>
+                  <label className="text-sm font-medium text-gray-700">
+                    Password
+                  </label>
                   <div className="relative mt-1">
                     <input
                       type={showSubPassword ? "text" : "password"}
                       placeholder="********"
                       className="w-full border rounded-xl p-3 pr-12 outline-none"
                       value={subUserForm.password}
-                      onChange={(e) => setSubUserForm((s) => ({ ...s, password: e.target.value }))}
+                      onChange={(e) =>
+                        setSubUserForm((s) => ({
+                          ...s,
+                          password: e.target.value,
+                        }))
+                      }
                     />
                     <button
                       type="button"
                       onClick={() => setShowSubPassword(!showSubPassword)}
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-600 hover:text-gray-800"
                     >
-                      {showSubPassword ? <FaEyeSlash size={18} /> : <FaEye size={18} />}
+                      {showSubPassword ? (
+                        <FaEyeSlash size={18} />
+                      ) : (
+                        <FaEye size={18} />
+                      )}
                     </button>
                   </div>
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-gray-700">Phone Number</label>
+                  <label className="text-sm font-medium text-gray-700">
+                    Phone Number
+                  </label>
                   <input
                     type="tel"
                     inputMode="numeric"
@@ -674,7 +780,9 @@ export default function Mynewshop() {
               <div className="text-center mt-3">
                 <button
                   className="bg-[#007A3F] text-white font-medium py-3 px-10 rounded-full hover:bg-green-700 transition disabled:opacity-60"
-                  onClick={editingSubUser ? handleUpdateSubUser : handleAddSubUser}
+                  onClick={
+                    editingSubUser ? handleUpdateSubUser : handleAddSubUser
+                  }
                   disabled={subLoading}
                 >
                   {subLoading
@@ -687,7 +795,12 @@ export default function Mynewshop() {
                   <button
                     onClick={() => {
                       setEditingSubUser(null);
-                      setSubUserForm({ subUsername: "", email: "", password: "", phoneNumber: "" });
+                      setSubUserForm({
+                        subUsername: "",
+                        email: "",
+                        password: "",
+                        phoneNumber: "",
+                      });
                     }}
                     className="ml-4 text-red-600 underline"
                   >

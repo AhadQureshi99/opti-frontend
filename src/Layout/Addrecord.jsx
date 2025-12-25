@@ -150,6 +150,7 @@ export default function Addrecord() {
           axis: leftAxis ? parseInt(leftAxis) : null,
         },
         addInput: addValue === "Select" ? "" : addValue,
+        isDirectRecord: true,
       };
 
       await post("/api/orders/create", data, { cacheKey: "orders" });

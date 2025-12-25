@@ -128,6 +128,7 @@ export default function Myshop() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [uploadedImage, setUploadedImage] = useState(null);
   const [subLoading, setSubLoading] = useState(false);
   const [subUsers, setSubUsers] = useState([]);
   const [editingSubUser, setEditingSubUser] = useState(null);
@@ -248,6 +249,18 @@ export default function Myshop() {
       .then((data) => {
         if (!mounted) return;
         const u = data && data.user ? data.user : data;
+
+        // Set uploaded image if exists
+        if (u.image) {
+          const base = (
+            import.meta?.env?.VITE_API_BASE || "https://api.optislip.com"
+          ).replace(/\/api\/?$/, "");
+          const imgSrc = u.image.startsWith("http")
+            ? u.image
+            : base + "/" + u.image.replace(/^\//, "");
+          setUploadedImage(imgSrc);
+        }
+
         // map backend user fields to form
         setForm((f) => ({
           ...f,
@@ -367,6 +380,10 @@ export default function Myshop() {
         data = text;
       }
       if (!res.ok) throw { status: res.status, body: data };
+
+      // Set the uploaded image for preview
+      setUploadedImage(URL.createObjectURL(file));
+
       toast.addToast("Logo uploaded", { type: "success" });
     } catch (err) {
       console.error("Upload failed", err);
@@ -518,89 +535,6 @@ export default function Myshop() {
       z-20
     "
           >
-            Phone Number
-          </label>
-
-          <div className="flex items-center w-[65%]">
-            <input
-              name="countryCode"
-              value={form.countryCode}
-              onChange={handleChange}
-              type="text"
-              placeholder="+91"
-              list="country-codes"
-              className="
-        px-3
-        py-6
-        border-2
-        border-black
-        rounded-l-[25px]
-        text-base
-        font-bold
-        bg-white
-        text-black
-        min-h-[60px]
-        transition-all
-        duration-300
-        focus:border-green-600
-        focus:shadow-md
-        outline-none
-        w-[30%]
-      "
-            />
-            <datalist id="country-codes">
-              {countries.map((country) => (
-                <option key={country.code} value={country.code}>
-                  {country.name} ({country.code})
-                </option>
-              ))}
-            </datalist>
-
-            <input
-              name="phoneNumber"
-              value={form.phoneNumber}
-              onChange={handleChange}
-              type="tel"
-              placeholder="Enter phone number"
-              className="
-        w-[70%]
-        px-5
-        py-6
-        border-2
-        border-l-0
-        border-black
-        rounded-r-[25px]
-        text-base
-        font-bold
-        bg-white
-        text-black
-        placeholder:text-gray-400
-        min-h-[60px]
-        transition-all
-        duration-300
-        focus:border-green-600
-        focus:shadow-md
-        outline-none
-      "
-            />
-          </div>
-        </div>
-
-        <div className="relative w-full flex flex-row justify-center my-10">
-          <label
-            className="
-      absolute
-      -top-5
-      left-20
-      sm:left-60
-      bg-white
-      px-2
-      text-sm
-      font-bold
-      text-black
-      z-20
-    "
-          >
             User Name
           </label>
 
@@ -678,11 +612,107 @@ export default function Myshop() {
         </div>
 
         <div className="relative w-full flex flex-row justify-center my-10">
+          <label
+            className="
+      absolute
+      -top-5
+      left-20
+      sm:left-60
+      bg-white
+      px-2
+      text-sm
+      font-bold
+      text-black
+      z-20
+    "
+          >
+            Phone Number
+          </label>
+
+          <div className="flex items-center w-[65%]">
+            <input
+              name="countryCode"
+              value={form.countryCode}
+              onChange={handleChange}
+              type="text"
+              placeholder="+91"
+              list="country-codes"
+              className="
+        px-3
+        py-6
+        border-2
+        border-black
+        rounded-l-[25px]
+        text-base
+        font-bold
+        bg-white
+        text-black
+        min-h-[60px]
+        transition-all
+        duration-300
+        focus:border-green-600
+        focus:shadow-md
+        outline-none
+        w-[30%]
+      "
+            />
+            <datalist id="country-codes">
+              {countries.map((country) => (
+                <option key={country.code} value={country.code}>
+                  {country.name} ({country.code})
+                </option>
+              ))}
+            </datalist>
+
+            <input
+              name="phoneNumber"
+              value={form.phoneNumber}
+              onChange={handleChange}
+              type="number"
+              placeholder="Enter phone number"
+              className="
+        w-[70%]
+        px-5
+        py-6
+        border-2
+        border-l-0
+        border-black
+        rounded-r-[25px]
+        text-base
+        font-bold
+        bg-white
+        text-black
+        placeholder:text-gray-400
+        min-h-[60px]
+        transition-all
+        duration-300
+        focus:border-green-600
+        focus:shadow-md
+        outline-none
+      "
+            />
+          </div>
+        </div>
+
+        <div className="relative w-full flex flex-row justify-center my-10">
           <label className="absolute -top-0 left-20 sm:left-60 bg-white px-2 text-sm font-bold text-black z-20">
             Upload Logo
           </label>
 
           <div className="w-[65%] flex flex-col mt-8 sm:mt-0">
+            {/* Image Preview */}
+            {uploadedImage && (
+              <div className="mb-4 flex justify-center">
+                <div className="w-32 h-32 rounded-full border-4 border-green-600 overflow-hidden bg-gray-100">
+                  <img
+                    src={uploadedImage}
+                    alt="Shop logo"
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              </div>
+            )}
+
             <input
               id="uploadLogo"
               ref={fileRef}
@@ -862,141 +892,53 @@ export default function Myshop() {
             />
           </div>
         </div>
+
         <div className="relative w-full flex flex-row justify-center my-10">
-          <label
-            className="
-      absolute
-      -top-5
-      left-20
-      sm:left-60
-      bg-white
-      px-2
-      text-sm
-      font-bold
-      text-black
-      z-20
-    "
-          >
+          <label className="absolute -top-5 left-20 sm:left-60 bg-white px-2 text-sm font-bold text-black z-20">
             Facebook ID
           </label>
-
-          <input
-            name="facebookId"
-            value={form.facebookId}
-            onChange={handleChange}
-            type="text"
-            placeholder="Enter Facebook ID"
-            className="
-     w-[65%]
-      px-5 
-      py-6
-      border-2 
-      border-black
-      rounded-[25px]
-      text-base
-      font-bold
-      bg-white
-      text:black
-      placeholde:text-gray-400
-      min-h-[60px]
-      transition-all
-      duration-300
-      focus:border-green-600
-      focus:shadow-md
-      outline-none
-    "
-          />
+          <div className="w-[65%]">
+            <input
+              name="facebookId"
+              value={form.facebookId}
+              onChange={handleChange}
+              type="text"
+              placeholder="Enter Facebook username or page name"
+              className="w-full px-5 py-6 border-2 border-black rounded-[25px] text-base font-bold bg-white text-black placeholder:text-gray-400 min-h-[60px] transition-all duration-300 focus:border-green-600 focus:shadow-md outline-none"
+            />
+          </div>
         </div>
 
         <div className="relative w-full flex flex-row justify-center my-10">
-          <label
-            className="
-      absolute
-      -top-5
-      left-20
-      sm:left-60
-      bg-white
-      px-2
-      text-sm
-      font-bold
-      text-black
-      z-20
-    "
-          >
+          <label className="absolute -top-5 left-20 sm:left-60 bg-white px-2 text-sm font-bold text-black z-20">
             Instagram ID
           </label>
-
-          <input
-            name="instagramId"
-            value={form.instagramId}
-            onChange={handleChange}
-            type="text"
-            placeholder="Enter Instagram ID"
-            className="
-     w-[65%]
-      px-5 
-      py-6
-      border-2 
-      border-black
-      rounded-[25px]
-      text-base
-      font-bold
-      bg-white
-       text:black
-      placeholde:text-gray-400
-      min-h-[60px]
-      transition-all
-      duration-300
-      focus:border-green-600
-      focus:shadow-md
-      outline-none
-    "
-          />
+          <div className="w-[65%]">
+            <input
+              name="instagramId"
+              value={form.instagramId}
+              onChange={handleChange}
+              type="text"
+              placeholder="Enter Instagram username"
+              className="w-full px-5 py-6 border-2 border-black rounded-[25px] text-base font-bold bg-white text-black placeholder:text-gray-400 min-h-[60px] transition-all duration-300 focus:border-green-600 focus:shadow-md outline-none"
+            />
+          </div>
         </div>
+
         <div className="relative w-full flex flex-row justify-center my-10">
-          <label
-            className="
-      absolute
-      -top-5
-     left-20
-      sm:left-60
-      bg-white
-      px-2
-      text-sm
-      font-bold
-      text-black
-      z-20
-    "
-          >
+          <label className="absolute -top-5 left-20 sm:left-60 bg-white px-2 text-sm font-bold text-black z-20">
             Website
           </label>
-
-          <input
-            name="website"
-            value={form.website}
-            onChange={handleChange}
-            type="url"
-            placeholder="Enter Website URL"
-            className="
-     w-[65%]
-      px-5 
-      py-6
-      border-2 
-      border-black
-      rounded-[25px]
-      text-base
-      font-bold
-      bg-white
-       text:black
-      placeholde:text-gray-400
-      min-h-[60px]
-      transition-all
-      duration-300
-      focus:border-green-600
-      focus:shadow-md
-      outline-none
-    "
-          />
+          <div className="w-[65%]">
+            <input
+              name="website"
+              value={form.website}
+              onChange={handleChange}
+              type="url"
+              placeholder="Enter website URL (e.g., yourshop.com)"
+              className="w-full px-5 py-6 border-2 border-black rounded-[25px] text-base font-bold bg-white text-black placeholder:text-gray-400 min-h-[60px] transition-all duration-300 focus:border-green-600 focus:shadow-md outline-none"
+            />
+          </div>
         </div>
 
         <div className="flex justify-center space-x-6 sm:mt-20 mt-20">
