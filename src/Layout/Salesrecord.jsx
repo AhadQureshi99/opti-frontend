@@ -566,7 +566,10 @@ export default function Salesrecord() {
                       advance: Number(o.advance) || 0,
                       totalAmount: Number(o.totalAmount) || 0,
                       balance: Number(o.balance) || 0,
-                      cashReceived: o.isDirectRecord === true ? Number(o.totalAmount) || 0 : Number(o.advance) || 0,
+                      cashReceived:
+                        o.isDirectRecord === true
+                          ? Number(o.totalAmount) || 0
+                          : Number(o.advance) || 0,
                       delivered: o.status === "delivered",
                     };
                   }),
