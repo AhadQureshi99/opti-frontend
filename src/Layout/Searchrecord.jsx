@@ -1,5 +1,5 @@
 import { FaArrowLeft, FaSearch } from "react-icons/fa";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { FaPhoneAlt } from "react-icons/fa";
 import { MdEdit } from "react-icons/md";
 import { RiDeleteBinLine } from "react-icons/ri";
@@ -10,6 +10,7 @@ import { get, del } from "../utils/api";
 import { useToast } from "../components/ToastProvider";
 
 export default function Searchrecord() {
+  const navigate = useNavigate();
   const [showSlip, setShowSlip] = useState(false);
   const [orders, setOrders] = useState([]);
   const [query, setQuery] = useState("");
@@ -329,10 +330,23 @@ export default function Searchrecord() {
                     </div>
 
                     <div className="flex gap-6 items-center">
-                      <FaPhoneAlt
-                        className="text-[#007A3F] cursor-pointer hover:scale-110 transition"
-                        size={28}
-                      />
+                      {order?.whatsappNumber || order?.whatsapp ? (
+                        <a
+                          href={`tel:${order.whatsappNumber || order.whatsapp}`}
+                          className="text-[#007A3F]"
+                          title="Call"
+                        >
+                          <FaPhoneAlt
+                            className="cursor-pointer hover:scale-110 transition"
+                            size={28}
+                          />
+                        </a>
+                      ) : (
+                        <FaPhoneAlt
+                          className="text-[#007A3F] cursor-not-allowed opacity-50"
+                          size={28}
+                        />
+                      )}
 
                       <MdRemoveRedEye
                         className="text-[#019AF8] cursor-pointer hover:scale-110 transition"
@@ -346,6 +360,9 @@ export default function Searchrecord() {
                       <MdEdit
                         className="text-[#FF9101] cursor-pointer hover:scale-110 transition"
                         size={28}
+                        onClick={() =>
+                          navigate("/new-order", { state: { order } })
+                        }
                       />
 
                       <RiDeleteBinLine

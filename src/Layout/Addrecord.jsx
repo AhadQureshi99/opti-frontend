@@ -7,6 +7,8 @@ import { RiArrowDropDownLine } from "react-icons/ri";
 
 function generateOpticList(maxPlus, maxMinus, step) {
   const arr = [];
+  // Original behavior: start from max plus, go down to 0.00,
+  // then continue with minus values.
   for (let v = maxPlus; v >= step; v -= step) {
     arr.push("+" + v.toFixed(2));
   }
@@ -40,16 +42,20 @@ function CustomDropdown({
 
   useEffect(() => {
     if (isOpen && listRef.current) {
-      const zeroItem = listRef.current.querySelector('[data-value="0.00"]');
-      if (zeroItem) {
-        zeroItem.scrollIntoView({ block: "center" });
-        setTimeout(() => {
-          if (listRef.current) {
-            const itemHeight = zeroItem.offsetHeight || 48;
-            listRef.current.scrollTop -= itemHeight * 1.5;
-          }
-        }, 0);
-      }
+      // Use requestAnimationFrame to ensure the DOM is fully rendered
+      requestAnimationFrame(() => {
+        if (!listRef.current) return;
+        const zeroItem = listRef.current.querySelector('[data-value="0.00"]');
+        if (zeroItem) {
+          zeroItem.scrollIntoView({ block: "center" });
+          setTimeout(() => {
+            if (listRef.current) {
+              const itemHeight = zeroItem.offsetHeight || 48;
+              listRef.current.scrollTop -= itemHeight * 1.5;
+            }
+          }, 10);
+        }
+      });
     }
   }, [isOpen]);
 
@@ -118,11 +124,15 @@ export default function Addrecord() {
   const [leftCyl, setLeftCyl] = useState("0.00");
   const [leftAxis, setLeftAxis] = useState("");
   const [addValue, setAddValue] = useState("Select");
+  const [totalAmount, setTotalAmount] = useState("");
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
       const form = formRef.current;
+      const totalInput =
+        form.querySelector('input[name="totalAmount"]').value || "0";
+      const totalNumeric = Number(totalInput) || 0;
       const data = {
         patientName:
           form.querySelector('input[name="patientName"]').value || undefined,
@@ -134,11 +144,15 @@ export default function Addrecord() {
           form.querySelector('input[name="lensType"]').value || undefined,
         deliveryDate:
           form.querySelector('input[name="deliveryDate"]').value || undefined,
-        totalAmount:
-          form.querySelector('input[name="totalAmount"]').value || undefined,
-        importantNote:
-          form.querySelector('textarea[name="importantNote"]').value ||
-          undefined,
+        totalAmount: totalNumeric,
+        advance: totalNumeric,
+        balance: 0,
+        status: "delivered",
+        // For Add Record, this note is an instruction
+        // for the shopkeeper and should appear below
+        // the delivery date on the slip.
+        specialNote:
+          form.querySelector('textarea[name="specialNote"]').value || undefined,
         rightEye: {
           sph: rightSph === "Select" ? null : parseFloat(rightSph),
           cyl: rightCyl === "Select" ? null : parseFloat(rightCyl),
@@ -166,6 +180,7 @@ export default function Addrecord() {
         setLeftCyl("0.00");
         setLeftAxis("");
         setAddValue("Select");
+        setTotalAmount("");
       } catch (err) {}
     } catch (err) {
       console.error(err);
@@ -176,6 +191,9 @@ export default function Addrecord() {
   const handleDropdownChange = (setter) => (e) => {
     setter(e.target.value);
   };
+
+  // Check if button should be disabled
+  const isButtonDisabled = !totalAmount || parseFloat(totalAmount) <= 0;
 
   return (
     <form
@@ -243,7 +261,7 @@ export default function Addrecord() {
           text-base
           font-bold
           bg-white
-          text-gray-400
+          text-black
           min-h-[60px]
           transition-all
           duration-300
@@ -290,7 +308,7 @@ export default function Addrecord() {
           text-base
           font-bold
           bg-white
-          text-gray-400
+          text-black
           min-h-[60px]
           transition-all
           duration-300
@@ -338,7 +356,7 @@ export default function Addrecord() {
           text-base
           font-bold
           bg-white
-          text-gray-400
+          text-black
           min-h-[60px]
           transition-all
           duration-300
@@ -385,7 +403,7 @@ export default function Addrecord() {
           text-base
           font-bold
           bg-white
-          text-gray-400
+          text-black
           min-h-[60px]
           transition-all
           duration-300
@@ -419,6 +437,8 @@ export default function Addrecord() {
           name="totalAmount"
           type="text"
           placeholder="Enter total amount"
+          value={totalAmount}
+          onChange={(e) => setTotalAmount(e.target.value)}
           className="
           sm:w-[65%]
           sm:px-5 
@@ -433,7 +453,7 @@ export default function Addrecord() {
           text-base
           font-bold
           bg-white
-          text-gray-400
+          text-black
           min-h-[60px]
           transition-all
           duration-300
@@ -492,7 +512,7 @@ export default function Addrecord() {
         />
       </div>
 
-      {/* Special Note */}
+      {/* Special Note (Shopkeeper Instruction) */}
       <div className="relative w-full flex flex-row justify-center">
         <label
           className="
@@ -512,7 +532,7 @@ export default function Addrecord() {
           Special Note
         </label>
         <textarea
-          name="importantNote"
+          name="specialNote"
           placeholder="Enter any special notes or instructions..."
           className="
           sm:w-[65%]
@@ -542,10 +562,10 @@ export default function Addrecord() {
         />
       </div>
 
-      {/* Eyes Section - Now matches Neworder exactly */}
-      <div className="flex flex-col md:flex-row gap-6 w-full justify-center mt-10 px-4 sm:px-0">
+      {/* Eyes Section - Match Neworder layout and styles */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-10 mb-10 mt-10 px-4 sm:px-0">
         {/* Right Eye */}
-        <div className="bg-white border border-gray-200 rounded-2xl shadow-lg p-6 md:w-[45%]">
+        <div className="bg-white border border-gray-200 rounded-2xl shadow-lg p-6">
           <h2 className="text-xl font-bold text-white bg-green-600 text-center py-3 rounded-t-2xl -mx-6 -mt-6 mb-6">
             Right Eye
           </h2>
@@ -573,7 +593,9 @@ export default function Addrecord() {
             <div>
               <label className="block text-sm font-semibold mb-2">Axis</label>
               <input
-                type="number"
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
                 placeholder="1 - 180"
                 value={rightAxis}
                 onChange={(e) => setRightAxis(e.target.value)}
@@ -584,7 +606,7 @@ export default function Addrecord() {
         </div>
 
         {/* Left Eye */}
-        <div className="bg-white border border-gray-200 rounded-2xl shadow-lg p-6 md:w-[45%]">
+        <div className="bg-white border border-gray-200 rounded-2xl shadow-lg p-6">
           <h2 className="text-xl font-bold text-white bg-green-600 text-center py-3 rounded-t-2xl -mx-6 -mt-6 mb-6">
             Left Eye
           </h2>
@@ -612,7 +634,9 @@ export default function Addrecord() {
             <div>
               <label className="block text-sm font-semibold mb-2">Axis</label>
               <input
-                type="number"
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
                 placeholder="1 - 180"
                 value={leftAxis}
                 onChange={(e) => setLeftAxis(e.target.value)}
@@ -641,7 +665,12 @@ export default function Addrecord() {
       <div className="flex justify-center sm:my-9 my-1">
         <button
           type="submit"
-          className="bg-[#169D53] text-white font-bold px-[30px] text-[18px] py-[15px] rounded-lg shadow-md hover:shadow-lg hover:-translate-y-1 transition-all duration-300"
+          disabled={isButtonDisabled}
+          className={`font-bold px-[30px] text-[18px] py-[15px] rounded-lg shadow-md transition-all duration-300 ${
+            isButtonDisabled
+              ? "bg-gray-400 text-gray-200 cursor-not-allowed"
+              : "bg-[#169D53] text-white hover:shadow-lg hover:-translate-y-1"
+          }`}
         >
           Save Record
         </button>

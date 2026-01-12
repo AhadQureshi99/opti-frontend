@@ -48,15 +48,13 @@ export default function Herosection({ profile }) {
         <div className="bg-[#169D53] rounded-[20px] p-5 pb-8">
           {/* TOP SECTION */}
           <div className="flex items-start gap-4">
-            <div className="bg-white rounded-full w-[70px] h-[70px] overflow-hidden flex items-center justify-center flex-shrink-0 border-2 border-[#169D53]">
+            <div className="bg-white rounded-full w-[70px] h-[70px] overflow-hidden flex items-center justify-center flex-shrink-0 border-2 border-[#169D53] p-2">
               <img
                 src={imageSrc}
                 alt={displayName}
-                className="w-full h-full object-cover"
+                className="w-full h-full object-contain rounded-full"
                 style={{
                   aspectRatio: "1/1",
-                  minWidth: "70px",
-                  minHeight: "70px",
                 }}
                 loading="eager"
                 onError={(e) => {
@@ -85,7 +83,8 @@ export default function Herosection({ profile }) {
             <div className="flex items-center gap-2 min-w-0">
               <FaWhatsapp className="text-[#25D366] text-[20px] flex-shrink-0" />
               <span className="font-semibold text-[12px] sm:text-[14px] truncate">
-                {p.whatsappNumber || p.phoneNumber || "+1234567890"}
+                {p.whatsappCode || "+"}
+                {p.whatsappNumber || p.phoneNumber || "1234567890"}
               </span>
             </div>
 
@@ -121,15 +120,13 @@ export default function Herosection({ profile }) {
         <div className="p-[30px] border-4 border-[#169D53] rounded-[15px] bg-white">
           {/* Top Profile Section */}
           <div className="flex flex-col sm:flex-row items-center sm:items-start gap-[20px] mb-[20px]">
-            <div className="flex-shrink-0 bg-[#169D53] rounded-full w-[120px] h-[120px] flex items-center justify-center overflow-hidden border-4 border-[#169D53]">
+            <div className="flex-shrink-0 bg-white rounded-full w-[120px] h-[120px] flex items-center justify-center overflow-hidden border-4 border-[#169D53] p-3">
               <img
                 src={imageSrc}
                 alt={displayName}
-                className="w-full h-full object-cover"
+                className="w-full h-full object-contain rounded-full"
                 style={{
                   aspectRatio: "1/1",
-                  minWidth: "120px",
-                  minHeight: "120px",
                 }}
                 loading="eager"
                 onError={(e) => {
@@ -162,7 +159,8 @@ export default function Herosection({ profile }) {
                 <FaWhatsapp size={22} />
               </div>
               <span className="font-semibold text-[#333] text-[16px] md:text-[17px] text-center lg:text-left leading-snug">
-                {p.whatsappNumber || p.phoneNumber || "+92 300 1234567"}
+                {p.whatsappCode || "+"}
+                {p.whatsappNumber || p.phoneNumber || "92 300 1234567"}
               </span>
             </div>
 

@@ -40,16 +40,20 @@ function CustomDropdown({
 
   useEffect(() => {
     if (isOpen && listRef.current) {
-      const zeroItem = listRef.current.querySelector('[data-value="0.00"]');
-      if (zeroItem) {
-        zeroItem.scrollIntoView({ block: "center" });
-        setTimeout(() => {
-          if (listRef.current) {
-            const itemHeight = zeroItem.offsetHeight || 48;
-            listRef.current.scrollTop -= itemHeight * 1.5;
-          }
-        }, 0);
-      }
+      // Use requestAnimationFrame to ensure the DOM is fully rendered
+      requestAnimationFrame(() => {
+        if (!listRef.current) return;
+        const zeroItem = listRef.current.querySelector('[data-value="0.00"]');
+        if (zeroItem) {
+          zeroItem.scrollIntoView({ block: "center" });
+          setTimeout(() => {
+            if (listRef.current) {
+              const itemHeight = zeroItem.offsetHeight || 48;
+              listRef.current.scrollTop -= itemHeight * 1.5;
+            }
+          }, 10);
+        }
+      });
     }
   }, [isOpen]);
 
@@ -222,7 +226,10 @@ export default function Neworder() {
         const year = now.getFullYear();
         const month = String(now.getMonth() + 1).padStart(2, "0");
         const day = String(now.getDate()).padStart(2, "0");
-        const randomSuffix = String(Math.floor(Math.random() * 10000)).padStart(4, "0");
+        const randomSuffix = String(Math.floor(Math.random() * 10000)).padStart(
+          4,
+          "0"
+        );
         clientTrackingId = `ORD${year}${month}${day}_${randomSuffix}`; // ← Changed to ORD
       }
 

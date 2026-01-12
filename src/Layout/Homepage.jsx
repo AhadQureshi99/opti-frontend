@@ -72,54 +72,75 @@ export default function Homepage() {
 
     checkAndShowPromo();
 
-    // Try authenticated profile first (cached), then fallback to public profile
-    prefetchData(
-      "user_profile",
-      () => get("/api/user/profile", { cacheKey: "profile" }),
-      15 * 60 * 1000 // Cache for 15 minutes
-    )
-      .then((data) => {
-        if (!mounted) return;
-        const u = data && data.user ? data.user : data;
-        setProfile(u);
-
-        // Preload profile image if exists
-        if (u?.image) {
-          const base = (
-            import.meta?.env?.VITE_API_BASE || "https://api.optislip.com"
-          ).replace(/\/api\/?$/, "");
-          const imageSrc = u.image.startsWith("http")
-            ? u.image
-            : base + "/" + u.image.replace(/^\//, "");
-          preloadImage(imageSrc).catch(() =>
-            console.debug("Failed to preload profile image")
-          );
-        }
-      })
-      .catch(() => {
-        // try public profile
-        get("/api/user/public-profile")
-          .then((data) => {
-            if (!mounted) return;
-            const u = data && data.user ? data.user : data;
-            setProfile(u);
-            setCachedData("user_profile", u, 15 * 60 * 1000);
-
-            // Preload profile image if exists
-            if (u?.image) {
-              const base = (
-                import.meta?.env?.VITE_API_BASE || "https://api.optislip.com"
-              ).replace(/\/api\/?$/, "");
-              const imageSrc = u.image.startsWith("http")
-                ? u.image
-                : base + "/" + u.image.replace(/^\//, "");
-              preloadImage(imageSrc).catch(() =>
-                console.debug("Failed to preload profile image")
-              );
-            }
-          })
-          .catch(() => {});
-      });
+    // If subuser, load main user's public profile for shop display
+    const isSubUser = localStorage.getItem("isSubUser") === "true";
+    const mainUserId = localStorage.getItem("mainUserId");
+    if (isSubUser && mainUserId) {
+      // Fetch main user's public profile
+      get(`/api/user/public/${mainUserId}`)
+        .then((data) => {
+          if (!mounted) return;
+          const u = data && data.user ? data.user : data;
+          setProfile(u);
+          if (u?.image) {
+            const base = (
+              import.meta?.env?.VITE_API_BASE || "https://api.optislip.com"
+            ).replace(/\/api\/?$/, "");
+            const imageSrc = u.image.startsWith("http")
+              ? u.image
+              : base + "/" + u.image.replace(/^\//, "");
+            preloadImage(imageSrc).catch(() =>
+              console.debug("Failed to preload profile image")
+            );
+          }
+        })
+        .catch(() => {});
+    } else {
+      // Try authenticated profile first (cached), then fallback to public profile
+      prefetchData(
+        "user_profile",
+        () => get("/api/user/profile", { cacheKey: "profile" }),
+        15 * 60 * 1000 // Cache for 15 minutes
+      )
+        .then((data) => {
+          if (!mounted) return;
+          const u = data && data.user ? data.user : data;
+          setProfile(u);
+          if (u?.image) {
+            const base = (
+              import.meta?.env?.VITE_API_BASE || "https://api.optislip.com"
+            ).replace(/\/api\/?$/, "");
+            const imageSrc = u.image.startsWith("http")
+              ? u.image
+              : base + "/" + u.image.replace(/^\//, "");
+            preloadImage(imageSrc).catch(() =>
+              console.debug("Failed to preload profile image")
+            );
+          }
+        })
+        .catch(() => {
+          // try public profile
+          get("/api/user/public-profile")
+            .then((data) => {
+              if (!mounted) return;
+              const u = data && data.user ? data.user : data;
+              setProfile(u);
+              setCachedData("user_profile", u, 15 * 60 * 1000);
+              if (u?.image) {
+                const base = (
+                  import.meta?.env?.VITE_API_BASE || "https://api.optislip.com"
+                ).replace(/\/api\/?$/, "");
+                const imageSrc = u.image.startsWith("http")
+                  ? u.image
+                  : base + "/" + u.image.replace(/^\//, "");
+                preloadImage(imageSrc).catch(() =>
+                  console.debug("Failed to preload profile image")
+                );
+              }
+            })
+            .catch(() => {});
+        });
+    }
 
     return () => (mounted = false);
   }, []);
@@ -136,7 +157,7 @@ export default function Homepage() {
         <Promotionpage onClose={closePromo} onNavigate={goToLink} />
       )}
       <Navbar />
-      <Herosection profile={profile} />
+      {profile && <Herosection profile={profile} />}
       <Actionbuttons />
     </div>
   );

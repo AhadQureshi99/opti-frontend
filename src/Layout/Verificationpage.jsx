@@ -32,7 +32,11 @@ export default function Verificationpage() {
     setLoading(true);
     try {
       const res = await post("/api/user/verify-otp", { email, otp });
-      if (res.token) localStorage.setItem("authToken", res.token);
+      if (res.token) {
+        localStorage.setItem("authToken", res.token);
+        // Store login timestamp for 24-hour auto logout
+        localStorage.setItem("loginTime", Date.now().toString());
+      }
       localStorage.removeItem("pendingSignup");
       toast.addToast(res.message || "Verified", { type: "success" });
       navigate("/home-page");

@@ -7,11 +7,15 @@ import { LuPrinter } from "react-icons/lu";
 import { BiSave } from "react-icons/bi";
 import { getCachedData, setCachedData, prefetchData } from "../utils/dataCache";
 import { preloadImage } from "../utils/imageCache";
+import { jsPDF } from "jspdf";
+import html2canvas from "html2canvas";
+import { useToast } from "../components/ToastProvider";
 
 export default function Pendingorderslip() {
   const { id } = useParams();
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
+  const toast = useToast();
 
   // Preload the OptiSlip logo
   useEffect(() => {
@@ -72,6 +76,88 @@ export default function Pendingorderslip() {
     };
   }, [id]);
 
+  const handlePrint = () => {
+    window.print();
+  };
+
+  const handleSave = async () => {
+    const el = document.querySelector(".print-page");
+    if (!el) {
+      toast.addToast("Unable to find slip to save", { type: "error" });
+      return;
+    }
+
+    // Clone the slip so we can safely tweak colors just for html2canvas
+    const clone = el.cloneNode(true);
+
+    const colorProps = [
+      "color",
+      "backgroundColor",
+      "borderColor",
+      "borderTopColor",
+      "borderRightColor",
+      "borderBottomColor",
+      "borderLeftColor",
+      "outlineColor",
+      "textDecorationColor",
+      "columnRuleColor",
+    ];
+
+    const syncAndFixColors = (src, dst) => {
+      if (src.nodeType !== 1 || dst.nodeType !== 1) return;
+      const cs = window.getComputedStyle(src);
+      colorProps.forEach((prop) => {
+        const val = cs[prop];
+        if (val && typeof val === "string" && val.includes("oklch(")) {
+          if (prop === "backgroundColor") {
+            dst.style.backgroundColor = "#ffffff";
+          } else {
+            dst.style[prop] = "#000000";
+          }
+        }
+      });
+
+      const srcChildren = Array.from(src.children);
+      const dstChildren = Array.from(dst.children);
+      for (let i = 0; i < srcChildren.length; i++) {
+        if (dstChildren[i]) syncAndFixColors(srcChildren[i], dstChildren[i]);
+      }
+    };
+
+    syncAndFixColors(el, clone);
+
+    const wrapper = document.createElement("div");
+    wrapper.style.position = "fixed";
+    wrapper.style.left = "-99999px";
+    wrapper.style.top = "0";
+    wrapper.style.backgroundColor = "#ffffff";
+    wrapper.appendChild(clone);
+    document.body.appendChild(wrapper);
+
+    try {
+      const canvas = await html2canvas(clone, {
+        scale: 3,
+        backgroundColor: "#fff",
+        useCORS: true,
+      });
+
+      const imgData = canvas.toDataURL("image/png");
+      const pdf = new jsPDF("p", "mm", "a4");
+
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const imgWidth = pdfWidth - 20;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+      pdf.addImage(imgData, "PNG", 10, 10, imgWidth, imgHeight);
+      pdf.save(`order-${order?._id || "slip"}.pdf`);
+    } catch (e) {
+      console.error("Failed to save slip", e);
+      toast.addToast("Failed to save slip", { type: "error" });
+    } finally {
+      document.body.removeChild(wrapper);
+    }
+  };
+
   return (
     <div className="w-full bg-white h-full pb-10">
       <div className="relative flex items-center justify-center px-5 sm:px-10 pt-0">
@@ -114,11 +200,17 @@ export default function Pendingorderslip() {
       )}
 
       <div className="flex flex-col sm:flex-row justify-center gap-4 sm:gap-6 my-6 px-4">
-        <button className="flex items-center justify-center gap-2 bg-[#E2E2E2] text-black font-semibold px-6 sm:px-10 py-3 rounded-lg hover:bg-gray-300 transition-all duration-200 w-full sm:w-auto">
+        <button
+          onClick={handlePrint}
+          className="flex items-center justify-center gap-2 bg-[#E2E2E2] text-black font-semibold px-6 sm:px-10 py-3 rounded-lg hover:bg-gray-300 transition-all duration-200 w-full sm:w-auto"
+        >
           <LuPrinter size={18} />
           Print
         </button>
-        <button className="flex items-center justify-center gap-2 bg-[#007A3F] text-white font-semibold px-6 sm:px-10 py-3 rounded-lg hover:bg-green-700 transition-all duration-200 w-full sm:w-auto">
+        <button
+          onClick={handleSave}
+          className="flex items-center justify-center gap-2 bg-[#007A3F] text-white font-semibold px-6 sm:px-10 py-3 rounded-lg hover:bg-green-700 transition-all duration-200 w-full sm:w-auto"
+        >
           <BiSave size={18} />
           Save
         </button>

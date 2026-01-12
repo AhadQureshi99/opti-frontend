@@ -1,0 +1,1 @@
+body{margin:0;padding:0;background-color:#f8f9fa}select option{padding:8px}select::-webkit-scrollbar{width:6px}select option{max-height:200px}.login-clip{clip-path:polygon(0 0,100% 0,100% 100%,0% 100%)}@media (min-width: 768px){.login-clip{clip-path:polygon(0 0,100% 0,70% 100%,0% 100%)}}
