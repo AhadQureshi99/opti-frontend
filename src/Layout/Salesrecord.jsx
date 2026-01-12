@@ -3,10 +3,11 @@ import { Link } from "react-router-dom";
 import SalesChart from "./SalesChart";
 import { FaRegCalendarAlt } from "react-icons/fa";
 import { FaRedo } from "react-icons/fa";
+import { FaTrash } from "react-icons/fa";
 import DonutCard from "./DonutCard";
 import { useState, useEffect, useMemo } from "react";
 import { IoChevronDown } from "react-icons/io5";
-import { get } from "../utils/api";
+import { get, del } from "../utils/api";
 import { formatCurrency } from "../utils/currency";
 import { useToast } from "../components/ToastProvider";
 
@@ -33,20 +34,21 @@ export default function Salesrecord() {
   const [ordersList, setOrdersList] = useState([]);
   const [expensesList, setExpensesList] = useState([]);
 
+  const getOrderSalesDate = (o) => {
+    if (!o) return null;
+    if (o.isDirectRecord) {
+      return new Date(
+        o.deliveryDate || o.createdAt || o.updatedAt || o.createdAt
+      );
+    }
+    return new Date(
+      o.createdAt || o.deliveryDate || o.updatedAt || o.createdAt
+    );
+  };
+
   const finalCashInHand = useMemo(() => {
-    let received = 0;
-    let paid = 0;
-    (ordersList || []).forEach((o) => {
-      received += Number(o.advance) || 0;
-      if (o.status === "delivered") {
-        received += Number(o.balance) || 0;
-      }
-    });
-    (expensesList || []).forEach((e) => {
-      paid += Number(e.amount) || 0;
-    });
-    return formatCurrency(received - paid);
-  }, [ordersList, expensesList]);
+    return formatCurrency(salesTotal - expenseTotal);
+  }, [salesTotal, expenseTotal]);
 
   const quickRanges = [
     { label: "Today", handler: () => handleQuickRange(0) },
@@ -129,9 +131,8 @@ export default function Salesrecord() {
       filterEndDate.setHours(23, 59, 59, 999);
 
       const ordersInRange = allOrders.filter((o) => {
-        const d = new Date(
-          o.createdAt || o.deliveryDate || o.updatedAt || o.createdAt
-        );
+        const d = getOrderSalesDate(o);
+        if (!d) return false;
         return d >= filterStartDate && d <= filterEndDate;
       });
 
@@ -152,9 +153,8 @@ export default function Salesrecord() {
 
       let sTotal = 0;
       ordersInRange.forEach((o) => {
-        const d = new Date(
-          o.createdAt || o.deliveryDate || o.updatedAt || o.createdAt
-        );
+        const d = getOrderSalesDate(o);
+        if (!d) return;
         const key = d.toISOString().split("T")[0];
         const amt = Number(o.totalAmount) || 0;
         if (salesMap[key] !== undefined) salesMap[key] += amt;
@@ -199,6 +199,45 @@ export default function Salesrecord() {
       toast.addToast(err?.body?.message || "Failed to load sales data", {
         type: "error",
       });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDelete = async (type, id) => {
+    if (
+      !window.confirm(
+        `Are you sure you want to delete this ${type.toLowerCase()}?`
+      )
+    ) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      if (type === "Sale" || type === "Delivery") {
+        // For delivery rows, extract the actual order ID
+        const orderId = id.startsWith("delivery-")
+          ? id.replace("delivery-", "")
+          : id;
+        await del(`/api/orders/${orderId}`);
+        toast.addToast("Order deleted successfully", { type: "success" });
+      } else if (type === "Expense") {
+        await del(`/api/expenses/${id}`);
+        toast.addToast("Expense deleted successfully", { type: "success" });
+      }
+
+      // Refresh the data
+      await fetchData();
+    } catch (err) {
+      console.error("Delete error:", err);
+      toast.addToast(
+        err?.body?.message || `Failed to delete ${type.toLowerCase()}`,
+        {
+          type: "error",
+        }
+      );
     } finally {
       setLoading(false);
     }
@@ -538,6 +577,9 @@ export default function Salesrecord() {
                 <th className="px-4 py-2 text-right text-sm font-medium text-gray-700 border border-gray-300">
                   Cash Paid Out
                 </th>
+                <th className="px-4 py-2 text-center text-sm font-medium text-gray-700 border border-gray-300">
+                  Actions
+                </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y">
@@ -552,12 +594,7 @@ export default function Salesrecord() {
                     );
                     return {
                       id: o._id,
-                      date: new Date(
-                        o.createdAt ||
-                          o.deliveryDate ||
-                          o.updatedAt ||
-                          o.createdAt
-                      ),
+                      date: getOrderSalesDate(o),
                       type: "Sale",
                       ref: o.trackingId || o._id,
                       description:
@@ -606,7 +643,7 @@ export default function Salesrecord() {
                   return (
                     <tr>
                       <td
-                        colSpan={9}
+                        colSpan={10}
                         className="px-4 py-6 text-center text-sm text-gray-500 border border-gray-300"
                       >
                         No transactions in this range.
@@ -673,39 +710,51 @@ export default function Salesrecord() {
                           {cashPaidOut}
                         </span>
                       </td>
+                      <td className="px-4 py-3 text-center border border-gray-300">
+                        <button
+                          onClick={() => handleDelete(r.type, r.id)}
+                          className="text-red-600 hover:text-red-800 transition-colors duration-200"
+                          title={`Delete ${r.type}`}
+                        >
+                          <FaTrash className="inline-block w-4 h-4" />
+                        </button>
+                      </td>
                     </tr>
                   );
                 });
               })()}
               {/* Summary row for total sales */}
               <tr className="bg-gray-100 font-bold">
-                <td colSpan={6} className="border border-gray-300"></td>
+                <td colSpan={7} className="border border-gray-300"></td>
                 <td className="px-4 py-3 text-right text-sm text-gray-700 border border-gray-300">
                   Total Sales:
                 </td>
                 <td className="px-4 py-3 text-sm text-right text-green-700 border border-gray-300">
                   {formatCurrency(salesTotal)}
                 </td>
+                <td className="border border-gray-300"></td>
               </tr>
               {/* Summary row for total expenses */}
               <tr className="bg-gray-100 font-bold">
-                <td colSpan={6} className="border border-gray-300"></td>
+                <td colSpan={7} className="border border-gray-300"></td>
                 <td className="px-4 py-3 text-right text-sm text-gray-700 border border-gray-300">
                   Total Expenses:
                 </td>
                 <td className="px-4 py-3 text-sm text-right text-red-700 border border-gray-300">
                   {formatCurrency(expenseTotal)}
                 </td>
+                <td className="border border-gray-300"></td>
               </tr>
               {/* Summary row for net amount */}
               <tr className="bg-gray-100 font-bold">
-                <td colSpan={6} className="border border-gray-300"></td>
+                <td colSpan={7} className="border border-gray-300"></td>
                 <td className="px-4 py-3 text-right text-sm text-gray-700 border border-gray-300">
                   Current Cash:
                 </td>
                 <td className="px-4 py-3 text-sm text-right text-blue-700 border border-gray-300">
                   {finalCashInHand}
                 </td>
+                <td className="border border-gray-300"></td>
               </tr>
             </tbody>
           </table>

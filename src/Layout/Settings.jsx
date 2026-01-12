@@ -33,7 +33,9 @@ export default function Settings() {
 
   const handleDeleteAccount = async () => {
     if (!deleteChecked) {
-      toast.addToast("Please check 'Delete My Shop Account' to confirm", { type: "error" });
+      toast.addToast("Please check 'Delete My Shop Account' to confirm", {
+        type: "error",
+      });
       return;
     }
 
@@ -43,20 +45,30 @@ export default function Settings() {
     if (!confirmed) return;
 
     try {
-      await put("/api/user/profile", { deleteAccount: true }, { cacheKey: "profile" });
+      await put(
+        "/api/user/profile",
+        { deleteAccount: true },
+        { cacheKey: "profile" }
+      );
 
-      toast.addToast("Account deleted successfully. Register again to restore all data.", {
-        type: "success",
-        timeout: 8000,
-      });
+      toast.addToast(
+        "Account deleted successfully. Register again to restore all data.",
+        {
+          type: "success",
+          timeout: 8000,
+        }
+      );
 
       localStorage.removeItem("authToken");
+      localStorage.removeItem("loginTime");
       sessionStorage.removeItem("authToken");
       localStorage.clear();
       navigate("/signin");
     } catch (err) {
       console.error("Delete error:", err);
-      toast.addToast("Failed to delete account. Please try again.", { type: "error" });
+      toast.addToast("Failed to delete account. Please try again.", {
+        type: "error",
+      });
     }
   };
 
@@ -169,10 +181,14 @@ export default function Settings() {
               navigate("/home-page");
             } catch (err) {
               if (err && err.status === 401) {
-                toast.addToast("Please log in to save settings", { type: "error" });
+                toast.addToast("Please log in to save settings", {
+                  type: "error",
+                });
                 navigate("/login");
               } else {
-                toast.addToast(err?.body?.message || "Save failed", { type: "error" });
+                toast.addToast(err?.body?.message || "Save failed", {
+                  type: "error",
+                });
               }
             }
           }}

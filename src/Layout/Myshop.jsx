@@ -133,6 +133,7 @@ export default function Myshop() {
   const [subUsers, setSubUsers] = useState([]);
   const [editingSubUser, setEditingSubUser] = useState(null);
   const [showSubPassword, setShowSubPassword] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [subUserForm, setSubUserForm] = useState({
     subUsername: "",
     email: "",
@@ -146,7 +147,6 @@ export default function Myshop() {
     countryCode: "+91",
     username: "",
     password: "",
-    currency: "INR - Indian Rupee (₹)",
     whatsappNumber: "",
     whatsappCode: "+91",
     facebookId: "",
@@ -302,7 +302,6 @@ export default function Myshop() {
         countryCode: form.countryCode,
         username: form.username,
         password: form.password || undefined,
-        currency: form.currency,
         whatsappNumber: form.whatsappNumber,
         whatsappCode: form.whatsappCode,
         facebookId: form.facebookId,
@@ -335,7 +334,6 @@ export default function Myshop() {
           phoneNumber: u.phoneNumber || u.phone || "",
           countryCode: u.countryCode || "+91",
           username: u.username || u.email || "",
-          currency: u.currency || f.currency,
           whatsappNumber: u.whatsappNumber || "",
           whatsappCode: u.whatsappCode || "+91",
           facebookId: u.facebookId || "",
@@ -396,8 +394,8 @@ export default function Myshop() {
   };
   return (
     <>
-      <div className="w-full bg-white h-fullscreen pb-20">
-        <div className="relative flex items-center justify-center px-5 sm:px-10 pt-10">
+      <div className="w-full bg-white min-h-screen pb-20 px-2 sm:px-6 md:px-12 lg:px-32 xl:px-64">
+        <div className="relative flex flex-col sm:flex-row items-center justify-center px-4 sm:px-10 pt-6 sm:pt-10 gap-4">
           <Link to="/home-page">
             <FaArrowLeft
               className="
@@ -427,7 +425,7 @@ export default function Myshop() {
           </p>
         </div>
 
-        <div className="relative w-full flex flex-row justify-center my-10">
+        <div className="relative w-full flex flex-col sm:flex-row justify-center my-6 sm:my-10">
           <label
             className="
       absolute
@@ -451,29 +449,11 @@ export default function Myshop() {
             onChange={handleChange}
             type="text"
             placeholder="Enter shop name"
-            className="
-     w-[65%]
-      px-5 
-      py-6
-      border-2 
-      border-black
-      rounded-[25px]
-      text-base
-      font-bold
-      bg-white
-      text-black       
-    placeholder:text-gray-400 
-      min-h-[60px]
-      transition-all
-      duration-300
-      focus:border-green-600
-      focus:shadow-md
-      outline-none
-    "
+            className="w-full sm:w-[65%] px-4 sm:px-5 py-4 sm:py-6 border-2 border-black rounded-[25px] text-base font-bold bg-white text-black placeholder:text-gray-400 min-h-[40px] sm:min-h-[60px] transition-all duration-300 focus:border-green-600 focus:shadow-md outline-none"
           />
         </div>
 
-        <div className="relative w-full flex flex-row justify-center">
+        <div className="relative w-full flex flex-col sm:flex-row justify-center">
           <label
             className="
       absolute
@@ -497,30 +477,11 @@ export default function Myshop() {
             onChange={handleChange}
             type="text"
             placeholder="Enter shop address"
-            className="
-     w-[65%]
-      px-5 
-      py-6
-      rows-3
-      border-2 
-      border-black
-      rounded-[25px]
-      text-base
-      font-bold
-      bg-white
-       text-black       
-    placeholder:text-gray-400 
-      min-h-[60px]
-      transition-all
-      duration-300
-      focus:border-green-600
-      focus:shadow-md
-      outline-none
-    "
+            className="w-full sm:w-[65%] px-4 sm:px-5 py-4 sm:py-6 rows-3 border-2 border-black rounded-[25px] text-base font-bold bg-white text-black placeholder:text-gray-400 min-h-[40px] sm:min-h-[60px] transition-all duration-300 focus:border-green-600 focus:shadow-md outline-none"
           />
         </div>
 
-        <div className="relative w-full flex flex-row justify-center my-10">
+        <div className="relative w-full flex flex-col sm:flex-row justify-center my-6 sm:my-10">
           <label
             className="
       absolute
@@ -544,29 +505,11 @@ export default function Myshop() {
             onChange={handleChange}
             type="text"
             placeholder="Enter user name"
-            className="
-     w-[65%]
-      px-5 
-      py-6
-      border-2 
-      border-black
-      rounded-[25px]
-      text-base
-      font-bold
-      bg-white
-       text-black       
-    placeholder:text-gray-400
-      min-h-[60px]
-      transition-all
-      duration-300
-      focus:border-green-600
-      focus:shadow-md
-      outline-none
-    "
+            className="w-full sm:w-[65%] px-4 sm:px-5 py-4 sm:py-6 border-2 border-black rounded-[25px] text-base font-bold bg-white text-black placeholder:text-gray-400 min-h-[40px] sm:min-h-[60px] transition-all duration-300 focus:border-green-600 focus:shadow-md outline-none"
           />
         </div>
 
-        <div className="relative w-full flex flex-row justify-center my-10">
+        <div className="relative w-full flex flex-col sm:flex-row justify-center my-6 sm:my-10">
           <label
             className="
       absolute
@@ -584,34 +527,26 @@ export default function Myshop() {
             Password
           </label>
 
-          <input
-            name="password"
-            value={form.password}
-            onChange={handleChange}
-            type="password"
-            placeholder="Enter new password(optional)"
-            className="
-     w-[65%]
-      px-5 
-      py-6
-      border-2 
-      border-black
-      rounded-[25px]
-      text-base
-      font-bold
-      bg-white
-       text-gray-400
-      min-h-[60px]
-      transition-all
-      duration-300
-      focus:border-green-600
-      focus:shadow-md
-      outline-none
-    "
-          />
+          <div className="w-full sm:w-[65%] relative">
+            <input
+              name="password"
+              value={form.password}
+              onChange={handleChange}
+              type={showPassword ? "text" : "password"}
+              placeholder="Enter new password(optional)"
+              className="w-full px-4 sm:px-5 py-4 sm:py-6 border-2 border-black rounded-[25px] text-base font-bold bg-white text-gray-400 placeholder:text-gray-400 min-h-[40px] sm:min-h-[60px] transition-all duration-300 focus:border-green-600 focus:shadow-md outline-none pr-12"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword((v) => !v)}
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-600 hover:text-gray-900 focus:outline-none"
+            >
+              {showPassword ? <FaEyeSlash size={18} /> : <FaEye size={18} />}
+            </button>
+          </div>
         </div>
 
-        <div className="relative w-full flex flex-row justify-center my-10">
+        <div className="relative w-full flex flex-col sm:flex-row justify-center my-6 sm:my-10">
           <label
             className="
       absolute
@@ -629,7 +564,7 @@ export default function Myshop() {
             Phone Number
           </label>
 
-          <div className="flex items-center w-[65%]">
+          <div className="flex flex-row items-center w-full sm:w-[65%] gap-0">
             <input
               name="countryCode"
               value={form.countryCode}
@@ -637,24 +572,7 @@ export default function Myshop() {
               type="text"
               placeholder="+91"
               list="country-codes"
-              className="
-        px-3
-        py-6
-        border-2
-        border-black
-        rounded-l-[25px]
-        text-base
-        font-bold
-        bg-white
-        text-black
-        min-h-[60px]
-        transition-all
-        duration-300
-        focus:border-green-600
-        focus:shadow-md
-        outline-none
-        w-[30%]
-      "
+              className="px-3 py-4 sm:py-6 border-2 border-black rounded-l-[25px] text-base font-bold bg-white text-black min-h-[40px] sm:min-h-[60px] transition-all duration-300 focus:border-green-600 focus:shadow-md outline-none w-1/3 sm:w-1/4"
             />
             <datalist id="country-codes">
               {countries.map((country) => (
@@ -668,38 +586,21 @@ export default function Myshop() {
               name="phoneNumber"
               value={form.phoneNumber}
               onChange={handleChange}
-              type="number"
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
               placeholder="Enter phone number"
-              className="
-        w-[70%]
-        px-5
-        py-6
-        border-2
-        border-l-0
-        border-black
-        rounded-r-[25px]
-        text-base
-        font-bold
-        bg-white
-        text-black
-        placeholder:text-gray-400
-        min-h-[60px]
-        transition-all
-        duration-300
-        focus:border-green-600
-        focus:shadow-md
-        outline-none
-      "
+              className="px-4 sm:px-5 py-4 sm:py-6 border-2 border-l-0 border-black rounded-r-[25px] text-base font-bold bg-white text-black placeholder:text-gray-400 min-h-[40px] sm:min-h-[60px] transition-all duration-300 focus:border-green-600 focus:shadow-md outline-none w-2/3 sm:w-3/4"
             />
           </div>
         </div>
 
-        <div className="relative w-full flex flex-row justify-center my-10">
+        <div className="relative w-full flex flex-col sm:flex-row justify-center my-6 sm:my-10">
           <label className="absolute -top-0 left-20 sm:left-60 bg-white px-2 text-sm font-bold text-black z-20">
             Upload Logo
           </label>
 
-          <div className="w-[65%] flex flex-col mt-8 sm:mt-0">
+          <div className="w-full sm:w-[65%] flex flex-col mt-8 sm:mt-0">
             {/* Image Preview */}
             {uploadedImage && (
               <div className="mb-4 flex justify-center">
@@ -757,60 +658,7 @@ export default function Myshop() {
           </div>
         </div>
 
-        <div className="relative w-full flex flex-row justify-center my-10">
-          <label
-            className="
-      absolute
-      -top-5
-      left-20
-      sm:left-60
-      bg-white
-      px-2
-      text-sm
-      font-bold
-      text-black
-      z-20
-    "
-          >
-            Currency
-          </label>
-
-          <div className="w-[65%]">
-            <CustomDropdown
-              options={[
-                "USD - US Dollar ($)",
-                "EUR - Euro (€)",
-                "GBP - British Pound (£)",
-                "PKR - Pakistani Rupee (₨)",
-                "INR - Indian Rupee (₹)",
-                "AED - Dirham (د.إ)",
-                "SAR - Saudi Riyal (﷼)",
-                "CAD - Canadian Dollar (C$)",
-                "AUD - Australian Dollar (A$)",
-                "JPY - Japanese Yen (¥)",
-                "CNY - Chinese Yuan (¥)",
-                "CHF - Swiss Franc (CHF)",
-                "SGD - Singapore Dollar (S$)",
-                "MYR - Malaysian Ringgit (RM)",
-                "BDT - Bangladeshi Taka (৳)",
-                "THB - Thai Baht (฿)",
-                "KRW - South Korean Won (₩)",
-                "ZAR - South African Rand (R)",
-                "TRY - Turkish Lira (₺)",
-                "BRL - Brazilian Real (R$)",
-                "MXN - Mexican Peso ($)",
-                "NZD - New Zealand Dollar (NZ$)",
-                "RUB - Russian Ruble (₽)",
-              ]}
-              value={form.currency}
-              onChange={handleChange}
-              name="currency"
-              placeholder="Select Currency"
-            />
-          </div>
-        </div>
-
-        <div className="relative w-full flex flex-row justify-center my-10">
+        <div className="relative w-full flex flex-col sm:flex-row justify-center my-6 sm:my-10">
           <label
             className="
       absolute
@@ -828,7 +676,7 @@ export default function Myshop() {
             WhatsApp Number
           </label>
 
-          <div className="flex items-center w-[65%]">
+          <div className="flex flex-row items-center w-full sm:w-[65%] gap-0">
             <input
               name="whatsappCode"
               value={form.whatsappCode}
@@ -836,24 +684,7 @@ export default function Myshop() {
               type="text"
               placeholder="+91"
               list="whatsapp-country-codes"
-              className="
-        px-3
-        py-6
-        border-2
-        border-black
-        rounded-l-[25px]
-        text-base
-        font-bold
-        bg-white
-        text-black
-        min-h-[60px]
-        transition-all
-        duration-300
-        focus:border-green-600
-        focus:shadow-md
-        outline-none
-        w-[30%]
-      "
+              className="px-3 py-4 sm:py-6 border-2 border-black rounded-l-[25px] text-base font-bold bg-white text-black min-h-[40px] sm:min-h-[60px] transition-all duration-300 focus:border-green-600 focus:shadow-md outline-none w-1/3 sm:w-1/4"
             />
             <datalist id="whatsapp-country-codes">
               {countries.map((country) => (
@@ -862,86 +693,18 @@ export default function Myshop() {
                 </option>
               ))}
             </datalist>
-
             <input
               name="whatsappNumber"
               value={form.whatsappNumber}
               onChange={handleChange}
-              type="tel"
+              type="number"
               placeholder="Enter WhatsApp number"
-              className="
-        w-[70%]
-        px-5
-        py-6
-        border-2
-        border-l-0
-        border-black
-        rounded-r-[25px]
-        text-base
-        font-bold
-        bg-white
-        text-black
-        placeholder:text-gray-400
-        min-h-[60px]
-        transition-all
-        duration-300
-        focus:border-green-600
-        focus:shadow-md
-        outline-none
-      "
+              className="w-2/3 sm:w-3/4 px-4 sm:px-5 py-4 sm:py-6 border-2 border-l-0 border-black rounded-r-[25px] text-base font-bold bg-white text-black placeholder:text-gray-400 min-h-[40px] sm:min-h-[60px] transition-all duration-300 focus:border-green-600 focus:shadow-md outline-none"
             />
           </div>
         </div>
 
-        <div className="relative w-full flex flex-row justify-center my-10">
-          <label className="absolute -top-5 left-20 sm:left-60 bg-white px-2 text-sm font-bold text-black z-20">
-            Facebook ID
-          </label>
-          <div className="w-[65%]">
-            <input
-              name="facebookId"
-              value={form.facebookId}
-              onChange={handleChange}
-              type="text"
-              placeholder="Enter Facebook username or page name"
-              className="w-full px-5 py-6 border-2 border-black rounded-[25px] text-base font-bold bg-white text-black placeholder:text-gray-400 min-h-[60px] transition-all duration-300 focus:border-green-600 focus:shadow-md outline-none"
-            />
-          </div>
-        </div>
-
-        <div className="relative w-full flex flex-row justify-center my-10">
-          <label className="absolute -top-5 left-20 sm:left-60 bg-white px-2 text-sm font-bold text-black z-20">
-            Instagram ID
-          </label>
-          <div className="w-[65%]">
-            <input
-              name="instagramId"
-              value={form.instagramId}
-              onChange={handleChange}
-              type="text"
-              placeholder="Enter Instagram username"
-              className="w-full px-5 py-6 border-2 border-black rounded-[25px] text-base font-bold bg-white text-black placeholder:text-gray-400 min-h-[60px] transition-all duration-300 focus:border-green-600 focus:shadow-md outline-none"
-            />
-          </div>
-        </div>
-
-        <div className="relative w-full flex flex-row justify-center my-10">
-          <label className="absolute -top-5 left-20 sm:left-60 bg-white px-2 text-sm font-bold text-black z-20">
-            Website
-          </label>
-          <div className="w-[65%]">
-            <input
-              name="website"
-              value={form.website}
-              onChange={handleChange}
-              type="url"
-              placeholder="Enter website URL (e.g., yourshop.com)"
-              className="w-full px-5 py-6 border-2 border-black rounded-[25px] text-base font-bold bg-white text-black placeholder:text-gray-400 min-h-[60px] transition-all duration-300 focus:border-green-600 focus:shadow-md outline-none"
-            />
-          </div>
-        </div>
-
-        <div className="flex justify-center space-x-6 sm:mt-20 mt-20">
+        <div className="flex flex-col sm:flex-row justify-center items-center space-y-4 sm:space-y-0 sm:space-x-6 sm:mt-20 mt-10">
           <button
             type="button"
             onClick={handleSave}

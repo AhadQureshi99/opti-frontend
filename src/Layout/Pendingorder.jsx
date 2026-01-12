@@ -35,7 +35,7 @@ function MarkCompleteButton({ id, onComplete }) {
 
   return (
     <button
-      className="ml-2 bg-green-600 text-white px-3 py-1 rounded"
+      className="bg-green-600 text-white px-2 py-1 text-xs sm:text-sm rounded whitespace-nowrap"
       onClick={mark}
       disabled={loading}
     >
@@ -54,6 +54,27 @@ export default function Pendingorder() {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [rangeText, setRangeText] = useState("Nov 1 To Nov 30");
+  const [currencySymbol, setCurrencySymbol] = useState("₹");
+  const [shopName, setShopName] = useState("");
+
+  // Helper function to format WhatsApp number with country code
+  const formatWhatsAppNumber = (number) => {
+    if (!number) return "";
+    // Remove all non-numeric characters
+    const cleaned = String(number).replace(/[^0-9]/g, "");
+
+    // Pakistani numbers are 11 digits with leading 0 (e.g., 03001234567)
+    // Remove leading 0 and add country code 92
+    if (cleaned.length === 11 && cleaned.startsWith("0")) {
+      return "92" + cleaned.substring(1);
+    }
+    // If 10 digits without leading 0, add 92
+    if (cleaned.length === 10) {
+      return "92" + cleaned;
+    }
+    // If already has country code (12+ digits), use as is
+    return cleaned;
+  };
 
   const quickRanges = [
     { label: "Today", handler: () => handleQuickRange(0) },
@@ -120,7 +141,6 @@ export default function Pendingorder() {
               isOffline: true,
             }));
 
-          // Combine with fetched orders, avoiding duplicates
           const ids = new Set(allOrders.map((o) => o._id || o.id));
           allOrders = [
             ...offlineOrders.filter((o) => !ids.has(o._id)),
@@ -130,20 +150,30 @@ export default function Pendingorder() {
           console.error("Failed to merge offline orders", e);
         }
 
-        // Sort orders: newest first (new orders appear on top)
+        // Sort orders: newest first
         allOrders.sort((a, b) => {
           const dateA = new Date(a.createdAt || a.deliveryDate || 0);
           const dateB = new Date(b.createdAt || b.deliveryDate || 0);
-          return dateB - dateA; // Descending: newest on top
+          return dateB - dateA;
         });
 
         setOrders(allOrders);
+
         const u =
           profileData && profileData.user ? profileData.user : profileData;
+
+        // Set currency symbol
         if (u && u.currency) {
           const m = (u.currency || "").match(/\(([^)]+)\)/);
           if (m) setCurrencySymbol(m[1]);
           else setCurrencySymbol((u.currency || "").split(" ")[0] || "₹");
+        }
+
+        // Set shop name from profile if available
+        if (u) {
+          const nameCandidate =
+            u.shopName || u.businessName || (u.shop && u.shop.name) || u.name;
+          if (nameCandidate) setShopName(nameCandidate);
         }
       } catch (e) {
         console.error(e);
@@ -164,7 +194,7 @@ export default function Pendingorder() {
       window.removeEventListener("offline-queue-processed", onProcessed);
     };
   }, []);
-  const [currencySymbol, setCurrencySymbol] = useState("₹");
+
   const toast = useToast();
 
   const handleMarkComplete = async (id) => {
@@ -174,7 +204,6 @@ export default function Pendingorder() {
         {},
         { id, cacheKey: "orders" }
       );
-      // update local list
       setOrders((prev) => prev.filter((o) => o._id !== id));
       toast.addToast("Order marked as complete", { type: "success" });
     } catch (err) {
@@ -199,19 +228,31 @@ export default function Pendingorder() {
     }
   };
 
+  // Helper to format amount safely
+  const formatAmount = (amount) => {
+    if (amount == null) return "0.00";
+    const num = typeof amount === "string" ? parseFloat(amount) : amount;
+    return isNaN(num) ? "0.00" : num.toFixed(2);
+  };
+
+  // Helper to calculate balance if not provided
+  const getBalance = (order) => {
+    if (order.balance != null) return formatAmount(order.balance);
+    const total = parseFloat(order.totalAmount || 0);
+    const paid = parseFloat(order.paidAmount || 0);
+    return isNaN(total - paid) ? "0.00" : (total - paid).toFixed(2);
+  };
+
+  // Helper to get advance/paid amount
+  const getAdvancePaid = (order) => {
+    if (order.advance != null) return formatAmount(order.advance);
+    if (order.paidAmount != null) return formatAmount(order.paidAmount);
+    return "0.00";
+  };
+
   return (
-    <div className="w-full bg-[white] h-screen ">
-      <div
-        className="
-    pb-10 
-    px-10 
-    pt-10
-    grid 
-    grid-cols-1
-    sm:grid-cols-3
-    items-center
-  "
-      >
+    <div className="w-full bg-[white] h-screen">
+      <div className="pb-10 px-10 pt-10 grid grid-cols-1 sm:grid-cols-3 items-center">
         <Link to="/home-page">
           <FaArrowLeft className="w-7 h-6 text-black cursor-pointer transition-all duration-300 hover:text-green-600 hover:-translate-x-1" />
         </Link>
@@ -293,39 +334,14 @@ export default function Pendingorder() {
       <div className="flex flex-col sm:flex-row items-center justify-center gap-3 my-6">
         <div className="relative w-full sm:w-[50%]">
           <FaSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-[#169D53] text-[18px]" />
-
           <input
             type="text"
             placeholder="Search by Name or Order ID"
-            className="
-                  w-full
-                  bg-white
-                  border border-[#e5e7eb]
-                  rounded-[14px]
-                  pl-12 pr-4 py-3
-                  sm:text-[16px]
-                  text-[12px]
-                  outline-none
-                  focus:border-[#169D53]
-                  focus:border-2
-                  transition-all
-                "
+            className="w-full bg-white border border-[#e5e7eb] rounded-[14px] pl-12 pr-4 py-3 sm:text-[16px] text-[12px] outline-none focus:border-[#169D53] focus:border-2 transition-all"
           />
         </div>
 
-        <button
-          className="
-                flex items-center gap-2
-                bg-[#169D53] text-white
-                font-semibold
-                px-6 py-3
-                rounded-[14px]
-                shadow-sm
-                hover:opacity-90
-                transition-all
-                w-full sm:w-auto
-              "
-        >
+        <button className="flex items-center gap-2 bg-[#169D53] text-white font-semibold px-6 py-3 rounded-[14px] shadow-sm hover:opacity-90 transition-all w-full sm:w-auto">
           <FaSearch />
           Search
         </button>
@@ -347,98 +363,138 @@ export default function Pendingorder() {
         </div>
       ) : (
         <div className="flex flex-col gap-6 mt-6 pb-20 max-w-5xl mx-auto px-4">
-          {orders.map((order, index) => (
-            <div key={order._id || index} className="flex justify-center">
-              <div className="bg-white w-full rounded-3xl p-6 shadow-xl border border-gray-200 hover:shadow-2xl transition-all">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-5">
-                  <div>
-                    <h3 className="text-2xl font-bold text-gray-900">
-                      {order.patientName ||
-                        order.name ||
-                        order.customerName ||
-                        (order.patient && order.patient.name) ||
-                        "Unknown Patient"}
-                      {String(order._id || "").startsWith("local-") && (
-                        <span className="ml-2 inline-block bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded-full font-semibold">
-                          Local
-                        </span>
+          {orders.map((order, index) => {
+            const patientName =
+              order.patientName ||
+              order.name ||
+              order.customerName ||
+              (order.patient && order.patient.name) ||
+              "Customer";
+            const items = order.items || order.orderItems || [];
+
+            const shop = shopName || "Your Shop";
+            const deliveryDateStr = order.deliveryDate
+              ? new Date(order.deliveryDate).toLocaleDateString("en-IN")
+              : "ASAP";
+            const totalAmt = formatAmount(order.totalAmount);
+            const paidAmt = getAdvancePaid(order);
+            const balanceAmt = getBalance(order);
+
+            const specialLines = [];
+            if (order.frameDetails)
+              specialLines.push(`- Frame: ${order.frameDetails}`);
+            if (order.lensType) specialLines.push(`- Lens: ${order.lensType}`);
+
+            const itemsSection =
+              items.length > 0
+                ? items
+                    .map(
+                      (item, idx) =>
+                        `${idx + 1}. ${
+                          item.itemName || item.name || "Lens"
+                        } × ${item.quantity || 1}`
+                    )
+                    .join("\n")
+                : "No items specified";
+
+            const whatsappMessage =
+              `*Valued Customer ${patientName}!*\n\n` +
+              `Thank you for placing your order with *${shop}*.\n\n` +
+              `*Order Details:*\n` +
+              `*Tracking ID:* ${order.trackingId || order._id}\n` +
+              `*Delivery Date:* ${deliveryDateStr}\n\n` +
+              `*Total Amount:* ${currencySymbol}${totalAmt}\n` +
+              `*Paid Amount:* ${currencySymbol}${paidAmt}\n` +
+              `*Balance Due:* ${currencySymbol}${balanceAmt}\n\n` +
+              `We'll notify you as soon as your glasses are ready for delivery/collection.\n\n` +
+              `Thank you for trusting us!\n` +
+              `*${shop}*`;
+
+            return (
+              <div key={order._id || index} className="flex justify-center">
+                <div className="bg-white w-full rounded-3xl p-6 shadow-xl border border-gray-200 hover:shadow-2xl transition-all">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-5">
+                    <div>
+                      <h3 className="text-2xl font-bold text-gray-900">
+                        {patientName}
+                        {String(order._id || "").startsWith("local-") && (
+                          <span className="ml-2 inline-block bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded-full font-semibold">
+                            Local
+                          </span>
+                        )}
+                      </h3>
+                      <p className="text-lg text-gray-700 font-medium mt-1">
+                        Tracking ID: {order.trackingId || order._id}
+                      </p>
+                      <p className="text-base text-gray-600 mt-2 flex items-center gap-2">
+                        <FaPhoneAlt className="text-[#169D53]" />
+                        {order.whatsappNumber || "No number"}
+                      </p>
+                      <p className="text-base text-gray-600 mt-1">
+                        Amount: {currencySymbol}
+                        {formatAmount(order.totalAmount)}
+                      </p>
+                    </div>
+
+                    <div className="flex gap-2 sm:gap-4 items-center flex-wrap">
+                      {/* Call */}
+                      {order?.whatsappNumber ? (
+                        <a
+                          href={`tel:${order.whatsappNumber}`}
+                          className="text-[#007A3F]"
+                          title="Call"
+                        >
+                          <FaPhoneAlt className="cursor-pointer hover:scale-110 transition w-7 h-7" />
+                        </a>
+                      ) : (
+                        <FaPhoneAlt className="text-[#007A3F] cursor-not-allowed opacity-50 w-7 h-7" />
                       )}
-                    </h3>
-                    <p className="text-lg text-gray-700 font-medium mt-1">
-                      Tracking ID: {order.trackingId || order._id}
-                    </p>
-                    <p className="text-base text-gray-600 mt-2 flex items-center gap-2">
-                      <FaPhoneAlt className="text-[#169D53]" />
-                      {order.whatsappNumber || "No number"}
-                    </p>
-                    <p className="text-base text-gray-600 mt-1">
-                      Amount:{" "}
-                      {(() => {
-                        const s =
-                          (order.currency &&
-                            (order.currency.match(/\(([^)]+)\)/) || [])[1]) ||
-                          currencySymbol ||
-                          "₹";
-                        const amt =
-                          typeof order.totalAmount === "string"
-                            ? parseFloat(order.totalAmount)
-                            : order.totalAmount;
-                        const display =
-                          typeof amt === "number" && !isNaN(amt)
-                            ? amt.toFixed(2)
-                            : order.totalAmount;
-                        return `${s}${display}`;
-                      })()}
-                    </p>
-                  </div>
 
-                  <div className="flex gap-6 items-center">
-                    {order?.whatsappNumber ? (
-                      <a
-                        href={`tel:${order.whatsappNumber}`}
-                        className="text-[#007A3F]"
-                        title={`Call ${order.whatsappNumber}`}
-                      >
-                        <FaPhoneAlt
-                          className="cursor-pointer hover:scale-110 transition"
-                          size={28}
-                        />
-                      </a>
-                    ) : (
-                      <FaPhoneAlt
-                        className="text-[#007A3F] cursor-not-allowed opacity-50"
-                        size={28}
+                      {/* View Slip */}
+                      <MdRemoveRedEye
+                        className="text-[#019AF8] cursor-pointer hover:scale-110 transition w-7 h-7"
+                        onClick={() => {
+                          setSelectedOrder(order);
+                          setShowSlip(true);
+                        }}
                       />
-                    )}
 
-                    <MdRemoveRedEye
-                      className="text-[#019AF8] cursor-pointer hover:scale-110 transition"
-                      size={28}
-                      onClick={() => {
-                        setSelectedOrder(order);
-                        setShowSlip(true);
-                      }}
-                    />
+                      {/* Edit */}
+                      <MdEdit
+                        className="text-[#FF9101] cursor-pointer hover:scale-110 transition w-7 h-7"
+                        onClick={() =>
+                          navigate("/new-order", { state: { order } })
+                        }
+                      />
 
-                    <MdEdit
-                      className="text-[#FF9101] cursor-pointer hover:scale-110 transition"
-                      size={28}
-                      onClick={() =>
-                        navigate("/new-order", { state: { order } })
-                      }
-                    />
-
-                    {order?.whatsappNumber ? (
-                      <a
-                        href={`https://wa.me/${String(
-                          order.whatsappNumber
-                        ).replace(/[^0-9]/g, "")}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="cursor-pointer hover:scale-110 transition"
-                        title={`Chat ${order.whatsappNumber} on WhatsApp`}
-                      >
-                        <svg height="28" width="28" viewBox="0 0 32 32">
+                      {/* WhatsApp Send Order - FIXED & IMPROVED */}
+                      {order?.whatsappNumber ? (
+                        <a
+                          href={`https://wa.me/${formatWhatsAppNumber(
+                            order.whatsappNumber
+                          )}?text=${encodeURIComponent(whatsappMessage)}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="cursor-pointer hover:scale-110 transition"
+                          title="Send order details + balance on WhatsApp"
+                        >
+                          <svg
+                            className="w-7 h-7"
+                            viewBox="0 0 32 32"
+                            fill="none"
+                          >
+                            <path
+                              fill="#25D366"
+                              d="M16 .667C7.64.667.667 7.64.667 16c0 2.82.735 5.555 2.132 7.963L0 32l8.315-2.745A15.26 15.26 0 0016 31.333C24.36 31.333 31.333 24.36 31.333 16S24.36.667 16 .667z"
+                            />
+                            <path
+                              fill="#FFF"
+                              d="M23.12 19.64c-.34-.17-2.02-1-2.34-1.11-.32-.12-.55-.17-.78.17-.23.34-.88 1.11-1.08 1.34-.2.23-.4.26-.74.09-.34-.17-1.43-.53-2.72-1.69-1-.9-1.69-2.01-1.88-2.35-.2-.34-.02-.52.15-.69.15-.15.34-.4.51-.61.17-.2.23-.34.34-.57.11-.23.06-.43-.03-.6-.09-.17-.78-1.82-1.08-2.49-.28-.63-.57-.54-.78-.55h-.67c-.23 0-.67.09-1.02.43-.34.34-1.34 1.18-1.34 2.85 0 1.67 1.22 3.29 1.39 3.52.17.23 2.38 3.56 5.97 5 .84.36 1.5.59 2.01.76.84.27 1.61.25 2.2.15.67-.1 2.02-.83 2.31-1.62.29-.79.29-1.45.2-1.58-.09-.13-.34-.23-.73-.4z"
+                            />
+                          </svg>
+                        </a>
+                      ) : (
+                        <svg viewBox="0 0 32 32" className="opacity-50 w-7 h-7">
                           <path
                             fill="#25D366"
                             d="M16 .667C7.64.667.667 7.64.667 16c0 2.82.735 5.555 2.132 7.963L0 32l8.315-2.745A15.26 15.26 0 0016 31.333C24.36 31.333 31.333 24.36 31.333 16S24.36.667 16 .667z"
@@ -448,58 +504,43 @@ export default function Pendingorder() {
                             d="M23.12 19.64c-.34-.17-2.02-1-2.34-1.11-.32-.12-.55-.17-.78.17-.23.34-.88 1.11-1.08 1.34-.2.23-.4.26-.74.09-.34-.17-1.43-.53-2.72-1.69-1-.9-1.69-2.01-1.88-2.35-.2-.34-.02-.52.15-.69.15-.15.34-.4.51-.61.17-.2.23-.34.34-.57.11-.23.06-.43-.03-.6-.09-.17-.78-1.82-1.08-2.49-.28-.63-.57-.54-.78-.55h-.67c-.23 0-.67.09-1.02.43-.34.34-1.34 1.18-1.34 2.85 0 1.67 1.22 3.29 1.39 3.52.17.23 2.38 3.56 5.97 5 .84.36 1.5.59 2.01.76.84.27 1.61.25 2.2.15.67-.1 2.02-.83 2.31-1.62.29-.79.29-1.45.2-1.58-.09-.13-.34-.23-.73-.4z"
                           />
                         </svg>
-                      </a>
-                    ) : (
-                      <svg
-                        height="20"
-                        width="20"
-                        viewBox="0 0 32 32"
-                        className="opacity-50 flex-shrink-0"
-                      >
-                        <path
-                          fill="#25D366"
-                          d="M16 .667C7.64.667.667 7.64.667 16c0 2.82.735 5.555 2.132 7.963L0 32l8.315-2.745A15.26 15.26 0 0016 31.333C24.36 31.333 31.333 24.36 31.333 16S24.36.667 16 .667z"
-                        />
-                        <path
-                          fill="#FFF"
-                          d="M23.12 19.64c-.34-.17-2.02-1-2.34-1.11-.32-.12-.55-.17-.78.17-.23.34-.88 1.11-1.08 1.34-.2.23-.4.26-.74.09-.34-.17-1.43-.53-2.72-1.69-1-.9-1.69-2.01-1.88-2.35-.2-.34-.02-.52.15-.69.15-.15.34-.4.51-.61.17-.2.23-.34.34-.57.11-.23.06-.43-.03-.6-.09-.17-.78-1.82-1.08-2.49-.28-.63-.57-.54-.78-.55h-.67c-.23 0-.67.09-1.02.43-.34.34-1.34 1.18-1.34 2.85 0 1.67 1.22 3.29 1.39 3.52.17.23 2.38 3.56 5.97 5 .84.36 1.5.59 2.01.76.84.27 1.61.25 2.2.15.67-.1 2.02-.83 2.31-1.62.29-.79.29-1.45.2-1.58-.09-.13-.34-.23-.73-.4z"
-                        />
-                      </svg>
-                    )}
+                      )}
 
-                    <RiDeleteBinLine
-                      className="text-[#FF0000] cursor-pointer hover:scale-110 transition"
-                      size={28}
-                      onClick={() => handleDelete(order._id)}
-                    />
-                    <MarkCompleteButton
-                      id={order._id}
-                      onComplete={() =>
-                        setOrders((prev) =>
-                          prev.filter((o) => o._id !== order._id)
-                        )
-                      }
-                    />
+                      {/* Delete */}
+                      <RiDeleteBinLine
+                        className="text-[#FF0000] cursor-pointer hover:scale-110 transition w-7 h-7"
+                        onClick={() => handleDelete(order._id)}
+                      />
+
+                      {/* Mark Complete */}
+                      <MarkCompleteButton
+                        id={order._id}
+                        onComplete={() =>
+                          setOrders((prev) =>
+                            prev.filter((o) => o._id !== order._id)
+                          )
+                        }
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
       {showSlip && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex justify-center items-center z-50">
-          <div className="bg-white max-h-[90vh] w-[90%]  rounded-xl shadow-xl overflow-y-auto relative p-4">
+          <div className="bg-white max-h-[90vh] w-[90%] rounded-xl shadow-xl overflow-y-auto relative p-4">
             <button
               onClick={() => setShowSlip(false)}
               className="absolute top-3 right-3 text-black text-[20px] cursor-pointer"
             >
               ✕
             </button>
-
             {selectedOrder ? (
-              <Customerorder order={selectedOrder} />
+              <Customerorder order={selectedOrder} showDelivered={false} />
             ) : (
               <div className="p-6 text-center">No order selected</div>
             )}

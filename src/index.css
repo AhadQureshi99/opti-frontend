@@ -3,7 +3,6 @@ body {
   padding: 0;
   background-color: #f8f9fa;
 }
- 
 
 select option {
   padding: 8px;
@@ -15,4 +14,15 @@ select::-webkit-scrollbar {
 
 select option {
   max-height: 200px;
+}
+
+/* Responsive clip-path for Login green panel */
+.login-clip {
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 0% 100%);
+}
+
+@media (min-width: 768px) {
+  .login-clip {
+    clip-path: polygon(0 0, 100% 0, 70% 100%, 0% 100%);
+  }
 }

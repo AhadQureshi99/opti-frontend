@@ -6,6 +6,7 @@ import Addrecord from "./Layout/Addrecord";
 import Calculator from "./Layout/Calculator";
 import Completeorder from "./Layout/Completeorder";
 import Homepage from "./Layout/Homepage";
+import PrivateRoute from "./components/PrivateRoute";
 import Myshop from "./Layout/Myshop";
 import Neworder from "./Layout/Neworder";
 import Pendingorder from "./Layout/Pendingorder";
@@ -35,7 +36,14 @@ function App() {
   return (
     <ToastProvider>
       <Routes>
-        <Route path="/home-page" element={<Homepage />} />
+        <Route
+          path="/home-page"
+          element={
+            <PrivateRoute>
+              <Homepage />
+            </PrivateRoute>
+          }
+        />
         <Route path="/my-shop" element={<Myshop />} />
         <Route path="/termsandconditions" element={<Termandcondition />} />
         <Route path="/privacy-policy" element={<Privacypolicy />} />

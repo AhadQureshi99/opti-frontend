@@ -13,6 +13,7 @@ export default function Navbar() {
       localStorage.removeItem("token");
       localStorage.removeItem("user");
       localStorage.removeItem("authToken");
+      localStorage.removeItem("loginTime");
       // Clear session storage for login and promo flags
       sessionStorage.removeItem("userLoggedIn");
       sessionStorage.removeItem("justLoggedIn");
@@ -74,18 +75,20 @@ export default function Navbar() {
               src="/Optislipimage.png"
               alt="OptiSlip"
               style={{ filter: "invert(1) grayscale(1) brightness(0)" }}
-              className="md:w-[120px] md:h-[102px] w-30 h-[17vh]"
+              className="h-[60px] w-auto object-contain md:h-[80px]"
             />
           </div>
 
           {/* Right Side Buttons */}
           <div className="flex items-center space-x-4 md:space-x-6">
-            <Link
-              to="/setting"
-              className="hidden md:flex text-green-600 font-semibold hover:bg-[#169D53] hover:text-white text-lg px-[8px] py-[6px] rounded-[6px]"
-            >
-              <IoMdSettings size={30} />
-            </Link>
+            {!isSubUser && (
+              <Link
+                to="/setting"
+                className="hidden md:flex text-green-600 font-semibold hover:bg-[#169D53] hover:text-white text-lg px-[8px] py-[6px] rounded-[6px]"
+              >
+                <IoMdSettings size={30} />
+              </Link>
+            )}
 
             <div className="hidden md:flex items-center space-x-6">
               <Link
@@ -113,7 +116,7 @@ export default function Navbar() {
                 src="/Optislipimage.png"
                 alt="OptiSlip"
                 style={{ filter: "invert(1) grayscale(1) brightness(0)" }}
-                className="w-16 h-auto"
+                className="h-12 w-auto object-contain"
               />
 
               <button onClick={() => setMenu(!menu)}>
@@ -159,14 +162,17 @@ export default function Navbar() {
 
             <div className="border-t border-gray-200 w-full"></div>
 
-            <Link
-              to="/setting"
-              className="text-[#169D53] font-semibold py-2 text-base w-full px-4 text-left"
-            >
-              Settings
-            </Link>
-
-            <div className="border-t border-gray-200 w-full"></div>
+            {!isSubUser && (
+              <>
+                <Link
+                  to="/setting"
+                  className="text-[#169D53] font-semibold py-2 text-base w-full px-4 text-left"
+                >
+                  Settings
+                </Link>
+                <div className="border-t border-gray-200 w-full"></div>
+              </>
+            )}
 
             <Link
               to="/privacy-policy"

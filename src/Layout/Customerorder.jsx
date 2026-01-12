@@ -3,14 +3,16 @@ import { Link } from "react-router-dom";
 import { LuPrinter } from "react-icons/lu";
 import { BiSave } from "react-icons/bi";
 import { IoClose } from "react-icons/io5";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { jsPDF } from "jspdf";
 import html2canvas from "html2canvas";
 import { useToast } from "../components/ToastProvider";
 import { put, get } from "../utils/api";
 import { getCachedData, setCachedData, prefetchData } from "../utils/dataCache";
+import { createRoot } from "react-dom/client";
+import OrderSlip from "../components/OrderSlip";
 
-export default function Customerorder({ order = null }) {
+export default function Customerorder({ order = null, showDelivered = true }) {
   const toast = useToast();
   const [delivered, setDelivered] = useState(order?.status === "delivered");
   const [shopDetails, setShopDetails] = useState({});
@@ -80,31 +82,121 @@ export default function Customerorder({ order = null }) {
   }, [shopDetails]);
 
   const handlePrint = () => {
-    const el = document.querySelector(".print-page");
-    el.classList.add("printing");
-    window.print();
-    el.classList.remove("printing");
+    const printWindow = window.open("", "_blank");
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Print Slip</title>
+          <style>
+            @page {
+              size: 80mm auto;
+              margin: 5mm;
+            }
+            body {
+              margin: 0;
+              padding: 0;
+              display: flex;
+              justify-content: center;
+              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            }
+            * {
+              box-sizing: border-box;
+            }
+            #slip-root {
+              max-width: 80mm;
+              padding: 3mm;
+            }
+          </style>
+          <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+        </head>
+        <body>
+          <div id="slip-root"></div>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+
+    const slipRoot = printWindow.document.getElementById("slip-root");
+    const root = createRoot(slipRoot);
+    root.render(<OrderSlip order={order} shopDetails={shopDetails} />);
+
+    setTimeout(() => {
+      printWindow.print();
+      printWindow.close();
+    }, 500);
   };
 
   const handleSave = async () => {
     const el = document.querySelector(".print-page");
     if (!el) return;
 
-    const canvas = await html2canvas(el, {
-      scale: 3,
-      backgroundColor: "#fff",
-      useCORS: true,
-    });
+    // Clone the slip so we can safely tweak colors just for html2canvas
+    const clone = el.cloneNode(true);
 
-    const imgData = canvas.toDataURL("image/png");
-    const pdf = new jsPDF("p", "mm", "a4");
+    const colorProps = [
+      "color",
+      "backgroundColor",
+      "borderColor",
+      "borderTopColor",
+      "borderRightColor",
+      "borderBottomColor",
+      "borderLeftColor",
+      "outlineColor",
+      "textDecorationColor",
+      "columnRuleColor",
+    ];
 
-    const pdfWidth = pdf.internal.pageSize.getWidth();
-    const imgWidth = pdfWidth - 20;
-    const imgHeight = (canvas.height * imgWidth) / canvas.width;
+    const syncAndFixColors = (src, dst) => {
+      if (src.nodeType !== 1 || dst.nodeType !== 1) return;
+      const cs = window.getComputedStyle(src);
+      colorProps.forEach((prop) => {
+        const val = cs[prop];
+        if (val && typeof val === "string" && val.includes("oklch(")) {
+          if (prop === "backgroundColor") {
+            dst.style.backgroundColor = "#ffffff";
+          } else {
+            dst.style[prop] = "#000000";
+          }
+        }
+      });
 
-    pdf.addImage(imgData, "PNG", 10, 10, imgWidth, imgHeight);
-    pdf.save(`order-${order?._id || "slip"}.pdf`);
+      const srcChildren = Array.from(src.children);
+      const dstChildren = Array.from(dst.children);
+      for (let i = 0; i < srcChildren.length; i++) {
+        if (dstChildren[i]) syncAndFixColors(srcChildren[i], dstChildren[i]);
+      }
+    };
+
+    syncAndFixColors(el, clone);
+
+    const wrapper = document.createElement("div");
+    wrapper.style.position = "fixed";
+    wrapper.style.left = "-99999px";
+    wrapper.style.top = "0";
+    wrapper.style.backgroundColor = "#ffffff";
+    wrapper.appendChild(clone);
+    document.body.appendChild(wrapper);
+
+    try {
+      const canvas = await html2canvas(clone, {
+        scale: 3,
+        backgroundColor: "#fff",
+        useCORS: true,
+      });
+
+      const imgData = canvas.toDataURL("image/png");
+      const pdf = new jsPDF("p", "mm", "a4");
+
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const imgWidth = pdfWidth - 20;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+      pdf.addImage(imgData, "PNG", 10, 10, imgWidth, imgHeight);
+      pdf.save(`order-${order?._id || "slip"}.pdf`);
+    } finally {
+      document.body.removeChild(wrapper);
+    }
   };
 
   const handleMarkDelivered = async (e) => {
@@ -157,125 +249,23 @@ export default function Customerorder({ order = null }) {
       </div>
 
       {/* SLIP */}
-      <div className="flex justify-center mt-4">
+      <div className="flex justify-center mt-4 mb-8 px-2 sm:px-0">
         <div
-          className="print-page border rounded-xl p-4 text-[13px] relative"
-          style={{ width: "280px" }}
+          className="print-page rounded-xl p-2 sm:p-4 md:p-6 relative bg-white shadow-lg overflow-auto w-full max-w-md sm:max-w-lg md:max-w-xl lg:max-w-2xl xl:max-w-3xl"
+          style={{ minWidth: 0 }}
         >
-          {/* ...existing code... (removed X/cross button) */}
-
-          <div className="text-center mb-2">
-            <h1 className="font-bold text-[18px] uppercase">
-              {shopDetails.shopName || "OPTISLIP"}
-            </h1>
-            <p className="text-[11px]">{shopDetails.address || "N/A"}</p>
-
-            {/* Phone with Country Code */}
-            <p className="text-[11px]">
-              Phone:{" "}
-              {shopDetails.countryCode && shopDetails.phoneNumber
-                ? `${shopDetails.countryCode} ${shopDetails.phoneNumber}`
-                : shopDetails.phoneNumber || "N/A"}
-            </p>
-
-            {/* WhatsApp with Country Code */}
-            <p className="text-[11px] font-semibold">
-              WhatsApp:{" "}
-              {shopDetails.whatsappCode && shopDetails.whatsappNumber
-                ? `${shopDetails.whatsappCode} ${shopDetails.whatsappNumber}`
-                : shopDetails.whatsappNumber || "N/A"}
-            </p>
-
-            {shopDetails.currency && (
-              <p className="text-[11px] mt-1 text-gray-700">
-                Currency: {shopDetails.currency}
-              </p>
-            )}
-          </div>
-
-          <hr className="border-dashed mb-2" />
-
-          <Row
-            label="Tracking ID"
-            value={order?.trackingId || "Not saved"}
-            bold
-          />
-          <Row label="Patient Name" value={order?.patientName} bold />
-          <Row label="WhatsApp" value={order?.whatsappNumber} bold />
-
-          <hr className="border-dashed my-2" />
-
-          <Row label="Frame" value={order?.frameDetails} bold />
-          <Row label="Lens" value={order?.lensType} bold />
-          <Row label="Total" value={formatAmount(order?.totalAmount)} bold />
-          <Row label="Advance" value={formatAmount(order?.advance)} bold />
-          <Row label="Balance" value={formatAmount(order?.balance)} bold />
-          <div className="flex justify-between text-[12px] font-bold">
-            <span>Delivery Date:</span>
-            <span>
-              {order?.deliveryDate ? order.deliveryDate.split("T")[0] : "N/A"}
-            </span>
-          </div>
-
-          <table className="w-full mt-2 font-bold text-[12px]">
-            <thead>
-              <tr>
-                <th className="text-left">Left Eye</th>
-                <th className="text-right">Right Eye</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td className="text-left">SPH:{format(order?.leftEye?.sph)}</td>
-                <td className="text-right">
-                  SPH:{format(order?.rightEye?.sph)}
-                </td>
-              </tr>
-              <tr>
-                <td className="text-left">CYL:{format(order?.leftEye?.cyl)}</td>
-                <td className="text-right">
-                  CYL:{format(order?.rightEye?.cyl)}
-                </td>
-              </tr>
-              <tr>
-                <td className="text-left">
-                  AXIS:{order?.leftEye?.axis ?? "-"}
-                </td>
-                <td className="text-right">
-                  AXIS:{order?.rightEye?.axis ?? "-"}
-                </td>
-              </tr>
-            </tbody>
-          </table>
-
-          <div className="text-center mt-4 font-bold">
-            <p>ADD</p>
-            <p>
-              {order?.addInput && order.addInput !== "Select"
-                ? order.addInput
-                : "-"}
-            </p>
-
-            {order?.specialNote && order.specialNote.trim() !== "" && (
-              <>
-                <p className="mt-4">Special Note</p>
-                {order.specialNote.split("\n").map((line, index) => (
-                  <p
-                    key={index}
-                    className="text-[11px] mt-1 leading-tight font-bold text-left"
-                    style={{ textIndent: "-16px", paddingLeft: "16px" }}
-                  >
-                    {line.replace(/^(\d+)\.\s*/, "$1 - ")}
-                  </p>
-                ))}
-              </>
-            )}
+          <div className="w-full flex justify-center">
+            <OrderSlip
+              order={order}
+              shopDetails={shopDetails}
+              viewMode={true}
+            />
           </div>
         </div>
       </div>
 
       {/* ACTIONS */}
-      <div className="print:hidden flex flex-col items-center gap-4 mt-5">
+      <div className="flex flex-col items-center gap-4 mt-5">
         <div className="flex gap-4">
           <button
             onClick={handlePrint}
@@ -290,70 +280,25 @@ export default function Customerorder({ order = null }) {
             <BiSave /> Save
           </button>
         </div>
-        <label className="flex items-center gap-2 mt-2 cursor-pointer select-none">
-          <input
-            type="checkbox"
-            checked={delivered}
-            onChange={handleMarkDelivered}
-            disabled={delivered}
-            className="accent-green-600 w-5 h-5"
-          />
-          <span
-            className={
-              delivered ? "text-green-600 font-semibold" : "text-gray-700"
-            }
-          >
-            {delivered ? "✓ Marked as Delivered" : "Mark as Delivered"}
-          </span>
-        </label>
+        {showDelivered && (
+          <label className="flex items-center gap-2 mt-2 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={delivered}
+              onChange={handleMarkDelivered}
+              disabled={delivered}
+              className="accent-green-600 w-5 h-5"
+            />
+            <span
+              className={
+                delivered ? "text-green-600 font-semibold" : "text-gray-700"
+              }
+            >
+              {delivered ? "✓ Marked as Delivered" : "Mark as Delivered"}
+            </span>
+          </label>
+        )}
       </div>
-
-      {/* PRINT STYLES */}
-      <style>{`
-        @media print {
-          @page {
-            size: A4;
-            margin: 0;
-          }
-          body {
-            margin: 0;
-            background: white;
-          }
-          body * {
-            visibility: hidden;
-          }
-          .print-page,
-          .print-page * {
-            visibility: visible;
-          }
-          .print-page {
-            display: none;
-          }
-          .print-page.printing {
-            display: block;
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 280px !important;
-            border: 1px solid #000 !important;
-            background: white !important;
-            page-break-before: always;
-            page-break-after: always;
-          }
-        }
-      `}</style>
-    </div>
-  );
-}
-
-function Row({ label, value, bold }) {
-  return (
-    <div
-      className={`flex justify-between text-[12px] ${bold ? "font-bold" : ""}`}
-    >
-      <span className={bold ? "font-bold" : "font-medium"}>{label}:</span>
-      <span className={bold ? "font-bold" : ""}>{value || "N/A"}</span>
     </div>
   );
 }
